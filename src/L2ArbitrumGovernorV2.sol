@@ -26,6 +26,8 @@ contract L2ArbitrumGovernorV2 is
   GovernorPreventLateQuorumUpgradeable,
   OwnableUpgradeable
 {
+  function initialize() public initializer {}
+
   function proposalDeadline(uint256 _proposalId)
     public
     view
