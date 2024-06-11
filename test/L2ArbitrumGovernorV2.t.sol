@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
+import {DeployImplementation} from "script/DeployImplementation.s.sol";
 import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
 import {Initializable} from "openzeppelin-upgradeable/proxy/utils/Initializable.sol";
 import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -15,7 +16,11 @@ contract L2ArbitrumGovernorV2Test is Test {
     vm.createSelectFork(
       vm.envOr("ARBITRUM_ONE_RPC_URL", string("Please set ARBITRUM_ONE_RPC_URL in your .env file")), FORK_BLOCK
     );
-    address _implementation = address(new L2ArbitrumGovernorV2());
+
+    DeployImplementation _implementationDeployer = new DeployImplementation();
+    _implementationDeployer.setUp();
+    address _implementation = address(_implementationDeployer.run());
+
     TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(_implementation, proxyOwner, "");
     governor = L2ArbitrumGovernorV2(payable(address(_proxy)));
     governor.initialize();

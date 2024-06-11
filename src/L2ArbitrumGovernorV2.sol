@@ -30,7 +30,16 @@ contract L2ArbitrumGovernorV2 is
     _disableInitializers();
   }
 
-  function initialize() public initializer {}
+  function initialize() public initializer {
+    __Governor_init("L2ArbitrumGovernorV2");
+    //__GovernorSettings_init(uint48 initialVotingDelay, uint32 initialVotingPeriod, uint256 initialProposalThreshold)
+    __GovernorCountingSimple_init();
+    //__GovernorVotes_init(IVotes tokenAddress)
+    //__GovernorTimelockControl_init(TimelockControllerUpgradeable timelockAddress)
+    //__GovernorVotesQuorumFraction_init(uint256 quorumNumeratorValue)
+    //__GovernorPreventLateQuorum_init(uint48 initialVoteExtension)
+    //__Ownable_init(address initialOwner)
+  }
 
   function proposalDeadline(uint256 _proposalId)
     public
