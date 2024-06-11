@@ -14,7 +14,9 @@ import {GovernorVotesQuorumFractionUpgradeable} from
 import {GovernorPreventLateQuorumUpgradeable} from
   "openzeppelin-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
 import {GovernorVotesUpgradeable} from "openzeppelin-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
+import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {OwnableUpgradeable} from "openzeppelin-upgradeable/access/OwnableUpgradeable.sol";
+import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
 
 contract L2ArbitrumGovernorV2 is
   Initializable,
@@ -30,15 +32,31 @@ contract L2ArbitrumGovernorV2 is
     _disableInitializers();
   }
 
-  function initialize() public initializer {
-    __Governor_init("L2ArbitrumGovernorV2");
-    //__GovernorSettings_init(uint48 initialVotingDelay, uint32 initialVotingPeriod, uint256 initialProposalThreshold)
+  function initialize(
+    string memory _name,
+    uint48 _initialVotingDelay,
+    uint32 _initialVotingPeriod,
+    uint256 _initialProposalThreshold,
+    IVotes _arbAddress,
+    TimelockControllerUpgradeable _timelockAddress,
+    uint256 _quorumNumeratorValue,
+    uint48 _initialVoteExtension,
+    address _initialOwner
+  ) public initializer {
+    __Governor_init(_name);
+    __GovernorSettings_init(_initialVotingDelay, _initialVotingPeriod, _initialProposalThreshold);
     __GovernorCountingSimple_init();
-    //__GovernorVotes_init(IVotes tokenAddress)
-    //__GovernorTimelockControl_init(TimelockControllerUpgradeable timelockAddress)
-    //__GovernorVotesQuorumFraction_init(uint256 quorumNumeratorValue)
-    //__GovernorPreventLateQuorum_init(uint48 initialVoteExtension)
-    //__Ownable_init(address initialOwner)
+    __GovernorVotes_init(_arbAddress);
+    __GovernorTimelockControl_init(_timelockAddress);
+    __GovernorVotesQuorumFraction_init(_quorumNumeratorValue);
+    __GovernorPreventLateQuorum_init(_initialVoteExtension);
+    __Ownable_init(_initialOwner);
+  }
+
+  /// @inheritdoc GovernorVotesQuorumFractionUpgradeable
+  function quorumDenominator() public pure override(GovernorVotesQuorumFractionUpgradeable) returns (uint256) {
+    // update to 10k to allow for higher precision
+    return 10_000;
   }
 
   function proposalDeadline(uint256 _proposalId)

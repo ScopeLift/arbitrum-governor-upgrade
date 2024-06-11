@@ -5,6 +5,7 @@ pragma solidity 0.8.26;
 
 import {Script} from "forge-std/Script.sol";
 
+// Basic shared infrastructure for all deploy scripts
 contract BaseDeployer is Script {
   uint256 deployerPrivateKey;
 
