@@ -20,7 +20,7 @@ abstract contract BaseGovernorDeployer is BaseDeployer, SharedGovernorConstants 
   function TIMELOCK_ADDRESS() public virtual returns (address payable);
   function QUORUM_NUMERATOR() public virtual returns (uint256);
 
-  function run(address _implementation) public returns (L2ArbitrumGovernorV2 _governor) {
+  function run(address _implementation) public virtual returns (L2ArbitrumGovernorV2 _governor) {
     vm.startBroadcast(deployerPrivateKey);
     TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(_implementation, PROXY_OWNER, "");
     _governor = L2ArbitrumGovernorV2(payable(address(_proxy)));

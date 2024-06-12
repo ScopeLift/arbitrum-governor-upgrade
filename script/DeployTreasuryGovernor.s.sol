@@ -3,7 +3,7 @@
 
 pragma solidity 0.8.26;
 
-import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
+import {BaseGovernorDeployer, L2ArbitrumGovernorV2} from "script/BaseGovernorDeployer.sol";
 
 // Concrete deployment script for the Arbitrum L2 Core Governor.
 contract DeployTreasuryGovernor is BaseGovernorDeployer {
@@ -17,5 +17,9 @@ contract DeployTreasuryGovernor is BaseGovernorDeployer {
 
   function QUORUM_NUMERATOR() public pure override returns (uint256) {
     return 300;
+  }
+
+  function run(address _implementation) public override returns (L2ArbitrumGovernorV2 _governor) {
+    return super.run(_implementation);
   }
 }
