@@ -9,6 +9,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
+  ARBITRUM_ONE_RPC_URL: ${{ secrets.ARBITRUM_ONE_RPC_URL }}
 
 jobs:
   build:
