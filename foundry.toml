@@ -1,7 +1,6 @@
 [profile.default]
   evm_version = "paris"
   optimizer = true
-
   optimizer_runs = 200
   remappings = [
     "forge-std/=lib/forge-std/src",
