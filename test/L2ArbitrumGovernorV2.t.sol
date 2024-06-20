@@ -12,6 +12,7 @@ import {Initializable} from "openzeppelin-upgradeable/proxy/utils/Initializable.
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
 import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 
 // ----------------------------------------------------------------------------------------------------------------- //
 // Test Suite Base - Shared values, setup, helpers, and virtual methods needed by concrete test contracts
@@ -22,6 +23,7 @@ abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
   address proxyOwner = makeAddr("Proxy Owner");
   L2ArbitrumGovernorV2 governor;
   BaseGovernorDeployer proxyDeployer;
+  ERC20Mock mockToken;
 
   // Each concrete test suite returns the appropriate concrete deploy script which will be exercised in setup
   function _createGovernorDeployer() internal virtual returns (BaseGovernorDeployer);
@@ -34,6 +36,7 @@ abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
     DeployImplementation _implementationDeployer = new DeployImplementation();
     _implementationDeployer.setUp();
     address _implementation = address(_implementationDeployer.run());
+    mockToken = new ERC20Mock();
 
     proxyDeployer = _createGovernorDeployer();
     proxyDeployer.setUp();
@@ -65,6 +68,50 @@ abstract contract Initialize is L2ArbitrumGovernorV2Test {
   }
 }
 
+abstract contract Relay is L2ArbitrumGovernorV2Test {
+  function testFuzz_CanRelayUpdateQuorumNumerator(uint256 _numerator) public {
+    _numerator = bound(_numerator, 1, governor.quorumDenominator());
+    vm.prank(PROXY_OWNER);
+    governor.relay(address(governor), 0, abi.encodeWithSelector(governor.updateQuorumNumerator.selector, _numerator));
+    assertEq(governor.quorumNumerator(), _numerator);
+  }
+
+  function testFuzz_CanRelayUpdateTimelock(TimelockControllerUpgradeable _timelock) public {
+    vm.prank(PROXY_OWNER);
+    governor.relay(address(governor), 0, abi.encodeWithSelector(governor.updateTimelock.selector, _timelock));
+    assertEq(governor.timelock(), address(_timelock));
+  }
+
+  function testFuzz_CanRelaySetVotingDelay(uint48 _newVotingDelay) public {
+    vm.prank(PROXY_OWNER);
+    governor.relay(address(governor), 0, abi.encodeWithSelector(governor.setVotingDelay.selector, _newVotingDelay));
+    assertEq(governor.votingDelay(), _newVotingDelay);
+  }
+
+  function testFuzz_CanRelaySetVotingPeriod(uint32 _newVotingPeriod) public {
+    vm.assume(_newVotingPeriod != 0);
+    vm.prank(PROXY_OWNER);
+    governor.relay(address(governor), 0, abi.encodeWithSelector(governor.setVotingPeriod.selector, _newVotingPeriod));
+    assertEq(governor.votingPeriod(), _newVotingPeriod);
+  }
+
+  function testFuzz_CanRelaySetProposalThreshold(uint256 _newProposalThreshold) public {
+    vm.prank(PROXY_OWNER);
+    governor.relay(
+      address(governor), 0, abi.encodeWithSelector(governor.setProposalThreshold.selector, _newProposalThreshold)
+    );
+    assertEq(governor.proposalThreshold(), _newProposalThreshold);
+  }
+
+  function testFuzz_CanRelayTokenTransfer(address _to, uint256 _amount) public {
+    vm.assume(_to != address(0));
+    mockToken.mint(address(governor), _amount);
+    vm.prank(PROXY_OWNER);
+    governor.relay(address(mockToken), 0, abi.encodeWithSelector(mockToken.transfer.selector, _to, _amount));
+    assertEq(mockToken.balanceOf(_to), _amount);
+  }
+}
+
 // ----------------------------------------------------------------------------------------------------------------- //
 // Concrete Test Contracts - Inherit from each abstract test and implement concrete methods for Core & Treasury case
 // ----------------------------------------------------------------------------------------------------------------- //
@@ -75,7 +122,19 @@ contract CoreGovernorInitialize is Initialize {
   }
 }
 
+contract CoreGovernorRelay is Relay {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployCoreGovernor();
+  }
+}
+
 contract TreasuryGovernorInitialize is Initialize {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployTreasuryGovernor();
+  }
+}
+
+contract TreasuryGovernorRelay is Relay {
   function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
     return new DeployTreasuryGovernor();
   }
