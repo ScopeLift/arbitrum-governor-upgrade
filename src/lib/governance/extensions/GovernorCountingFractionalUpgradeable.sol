@@ -59,12 +59,12 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
 
   // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.GovernorCountingFractional")) - 1)) &
   // ~bytes32(uint256(0xff))
-  bytes32 private constant GovernorCountingFractionalStorageLocation =
+  bytes32 private constant GOVERNOR_COUNTING_FRACTIONAL_STORAGE_LOCATION =
     0xd073797d8f9d07d835a3fc13195afeafd2f137da609f97a44f7a3aa434170800;
 
   function _getGovernorCountingFractionalStorage() private pure returns (GovernorCountingFractionalStorage storage $) {
     assembly {
-      $.slot := GovernorCountingFractionalStorageLocation
+      $.slot := GOVERNOR_COUNTING_FRACTIONAL_STORAGE_LOCATION
     }
   }
 
