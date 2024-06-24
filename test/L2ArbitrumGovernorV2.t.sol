@@ -192,7 +192,7 @@ abstract contract Quorum is L2ArbitrumGovernorV2Test {
       previousExcludeAddressVotes + arbitrumToken.balanceOf(_actor)
     );
     // Quorum should decrease
-    vm.assertTrue(previousQuorum > expectedQuorum);
+    vm.assertGt(previousQuorum, expectedQuorum);
   }
 }
 
