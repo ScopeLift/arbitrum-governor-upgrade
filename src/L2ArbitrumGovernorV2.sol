@@ -29,6 +29,17 @@ contract L2ArbitrumGovernorV2 is
   GovernorPreventLateQuorumUpgradeable,
   OwnableUpgradeable
 {
+  /// @notice address for which votes will not be counted toward quorum
+  /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
+  ///         are not eligible to vote. However, even if their voting/delegation is restricted their
+  ///         tokens will still count towards the total supply, and will therefore affect the quorom.
+  ///         Restricted addresses should be forced to delegate their votes to this special exclude
+  ///         addresses which is not counted when calculating quorum
+  ///         Example address that should be excluded: DAO treasury, foundation, unclaimed tokens,
+  ///         burned tokens and swept (see TokenDistributor) tokens.
+  ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
+  address public constant EXCLUDE_ADDRESS = address(0xA4b86);
+
   constructor() {
     _disableInitializers();
   }
@@ -98,6 +109,21 @@ contract L2ArbitrumGovernorV2 is
     returns (ProposalState)
   {
     return GovernorTimelockControlUpgradeable.state(_proposalId);
+  }
+
+  /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
+  function getPastCirculatingSupply(uint256 timepoint) public view virtual returns (uint256) {
+    return token().getPastTotalSupply(timepoint) - token().getPastVotes(EXCLUDE_ADDRESS, timepoint);
+  }
+
+  /// @notice Calculates the quorum size, excludes token delegated to the exclude address
+  function quorum(uint256 timepoint)
+    public
+    view
+    override(GovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
+    returns (uint256)
+  {
+    return (getPastCirculatingSupply(timepoint) * quorumNumerator(timepoint)) / quorumDenominator();
   }
 
   function _castVote(uint256 _proposalId, address _account, uint8 _support, string memory _reason, bytes memory _params)

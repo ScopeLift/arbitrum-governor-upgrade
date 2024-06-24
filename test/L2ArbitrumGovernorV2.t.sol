@@ -30,7 +30,7 @@ abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
   // Each concrete test suite returns the appropriate concrete deploy script which will be exercised in setup
   function _createGovernorDeployer() internal virtual returns (BaseGovernorDeployer);
 
-  function setUp() public {
+  function setUp() public virtual {
     vm.createSelectFork(
       vm.envOr("ARBITRUM_ONE_RPC_URL", string("Please set ARBITRUM_ONE_RPC_URL in your .env file")), FORK_BLOCK
     );
@@ -124,6 +124,66 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
   }
 }
 
+abstract contract Quorum is L2ArbitrumGovernorV2Test {
+  function setUp() public override {
+    super.setUp();
+    setQuorumNumerator(1000); // 10% quorum
+  }
+
+  function setQuorumNumerator(uint256 _numerator) public {
+    vm.prank(address(governor));
+    governor.updateQuorumNumerator(_numerator);
+    vm.roll(block.number + 1);
+  }
+
+  function majorDelegate(uint256 _actorSeed) public pure returns (address) {
+    if (_actorSeed % 5 == 1) {
+      return 0x0eB5B03c0303f2F47cD81d7BE4275AF8Ed347576; // Treasure
+    }
+    if (_actorSeed % 5 == 2) {
+      return 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2Beat
+    }
+    if (_actorSeed % 5 == 3) {
+      return 0xF4B0556B9B6F53E00A1FDD2b0478Ce841991D8fA; // olimpio
+    }
+    if (_actorSeed % 5 == 4) {
+      return 0x11cd09a0c5B1dc674615783b0772a9bFD53e3A8F; // Gauntlet
+    } else {
+      return 0xB933AEe47C438f22DE0747D57fc239FE37878Dd1; // Wintermute
+    }
+  }
+
+  function testFuzz_ReturnsCorrectQuorum(uint256 _numerator, uint256 _blockNumber) public {
+    _numerator = bound(_numerator, 1, governor.quorumDenominator());
+    setQuorumNumerator(_numerator);
+    _blockNumber = bound(_blockNumber, 1, block.number - 1);
+
+    uint256 tokenPastTotalSupply = governor.token().getPastTotalSupply(_blockNumber);
+    uint256 excludeAddressVotes = governor.token().getPastVotes(governor.EXCLUDE_ADDRESS(), _blockNumber);
+    uint256 expectedQuorum = (tokenPastTotalSupply - excludeAddressVotes) * governor.quorumNumerator(_blockNumber)
+      / governor.quorumDenominator();
+    vm.assertEq(governor.quorum(_blockNumber), expectedQuorum);
+  }
+
+  function test_ReturnsCorrectQuorumAfterDelegatingToExcludeAddress(
+    uint256 _numerator,
+    uint256 _blockNumber,
+    uint256 _actorSeed
+  ) public {
+    vm.prank(majorDelegate(_actorSeed));
+    governor.token().delegate(governor.EXCLUDE_ADDRESS());
+    _numerator = bound(_numerator, 1, governor.quorumDenominator());
+    setQuorumNumerator(_numerator);
+    _blockNumber = bound(_blockNumber, 1, block.number - 1);
+
+    uint256 tokenPastTotalSupply = governor.token().getPastTotalSupply(_blockNumber);
+    uint256 excludeAddressVotes = governor.token().getPastVotes(governor.EXCLUDE_ADDRESS(), _blockNumber);
+    uint256 expectedQuorum = (tokenPastTotalSupply - excludeAddressVotes) * governor.quorumNumerator(_blockNumber)
+      / governor.quorumDenominator();
+    vm.assertEq(governor.quorum(_blockNumber), expectedQuorum);
+  }
+}
+
 // ----------------------------------------------------------------------------------------------------------------- //
 // Concrete Test Contracts - Inherit from each abstract test and implement concrete methods for Core & Treasury case
 // ----------------------------------------------------------------------------------------------------------------- //
@@ -140,6 +200,12 @@ contract CoreGovernorRelay is Relay {
   }
 }
 
+contract CoreGovernorQuorum is Quorum {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployCoreGovernor();
+  }
+}
+
 contract TreasuryGovernorInitialize is Initialize {
   function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
     return new DeployTreasuryGovernor();
@@ -147,6 +213,12 @@ contract TreasuryGovernorInitialize is Initialize {
 }
 
 contract TreasuryGovernorRelay is Relay {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployTreasuryGovernor();
+  }
+}
+
+contract TreasuryGovernorQuorum is Quorum {
   function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
     return new DeployTreasuryGovernor();
   }
