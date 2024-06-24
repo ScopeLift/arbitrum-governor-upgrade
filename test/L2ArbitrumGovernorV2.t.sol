@@ -20,7 +20,7 @@ import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.
 
 abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
   uint256 constant FORK_BLOCK = 220_819_857; // Arbitrary recent block
-  address proxyOwner = makeAddr("Proxy Owner");
+  address constant proxyAdminContract = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961; // Proxy Admin Contract Address
   L2ArbitrumGovernorV2 governor;
   BaseGovernorDeployer proxyDeployer;
   ERC20Mock mockToken;
@@ -57,7 +57,7 @@ abstract contract Initialize is L2ArbitrumGovernorV2Test {
     assertEq(address(governor.token()), address(ARB_TOKEN_ADDRESS));
     assertEq(address(governor.timelock()), proxyDeployer.TIMELOCK_ADDRESS());
     assertEq(governor.lateQuorumVoteExtension(), INITIAL_VOTE_EXTENSION);
-    assertEq(governor.owner(), PROXY_OWNER);
+    assertEq(governor.owner(), GOVERNOR_OWNER);
   }
 
   function test_RevertIf_InitializerIsCalledASecondTime() public {
@@ -73,32 +73,32 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
 
   function testFuzz_CanRelayUpdateQuorumNumerator(uint256 _numerator) public {
     _numerator = bound(_numerator, 1, governor.quorumDenominator());
-    vm.prank(PROXY_OWNER);
+    vm.prank(GOVERNOR_OWNER);
     governor.relay(address(governor), 0, abi.encodeWithSelector(governor.updateQuorumNumerator.selector, _numerator));
     assertEq(governor.quorumNumerator(), _numerator);
   }
 
   function testFuzz_CanRelayUpdateTimelock(TimelockControllerUpgradeable _timelock) public {
-    vm.prank(PROXY_OWNER);
+    vm.prank(GOVERNOR_OWNER);
     governor.relay(address(governor), 0, abi.encodeWithSelector(governor.updateTimelock.selector, _timelock));
     assertEq(governor.timelock(), address(_timelock));
   }
 
   function testFuzz_CanRelaySetVotingDelay(uint48 _newVotingDelay) public {
-    vm.prank(PROXY_OWNER);
+    vm.prank(GOVERNOR_OWNER);
     governor.relay(address(governor), 0, abi.encodeWithSelector(governor.setVotingDelay.selector, _newVotingDelay));
     assertEq(governor.votingDelay(), _newVotingDelay);
   }
 
   function testFuzz_CanRelaySetVotingPeriod(uint32 _newVotingPeriod) public {
     vm.assume(_newVotingPeriod != 0);
-    vm.prank(PROXY_OWNER);
+    vm.prank(GOVERNOR_OWNER);
     governor.relay(address(governor), 0, abi.encodeWithSelector(governor.setVotingPeriod.selector, _newVotingPeriod));
     assertEq(governor.votingPeriod(), _newVotingPeriod);
   }
 
   function testFuzz_CanRelaySetProposalThreshold(uint256 _newProposalThreshold) public {
-    vm.prank(PROXY_OWNER);
+    vm.prank(GOVERNOR_OWNER);
     governor.relay(
       address(governor), 0, abi.encodeWithSelector(governor.setProposalThreshold.selector, _newProposalThreshold)
     );
@@ -108,16 +108,16 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
   function testFuzz_CanRelayTokenTransfer(address _to, uint256 _amount) public {
     vm.assume(_to != address(0));
     mockToken.mint(address(governor), _amount);
-    vm.prank(PROXY_OWNER);
+    vm.prank(GOVERNOR_OWNER);
     governor.relay(address(mockToken), 0, abi.encodeWithSelector(mockToken.transfer.selector, _to, _amount));
     assertEq(mockToken.balanceOf(_to), _amount);
   }
 
   function testFuzz_RevertIf_NotOwner(address _actor, uint256 _numerator) public {
-    vm.assume(_actor != PROXY_OWNER);
+    vm.assume(_actor != GOVERNOR_OWNER && _actor != proxyAdminContract);
     _numerator = bound(_numerator, 1, governor.quorumDenominator());
-    vm.prank(_actor);
     vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _actor));
+    vm.prank(_actor);
     governor.relay(address(governor), 0, abi.encodeWithSelector(governor.updateQuorumNumerator.selector, _numerator));
   }
 }
