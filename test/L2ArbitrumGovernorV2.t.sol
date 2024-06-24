@@ -243,7 +243,10 @@ abstract contract Propose is L2ArbitrumGovernorV2Test {
 abstract contract Cancel is L2ArbitrumGovernorV2Test {
   event ProposalCanceled(uint256 proposalId);
 
-  function testFuzz_CancelProposalAfterSucceedingButBeforeQueuing(uint256 _actorSeed) public virtual {
+  error NotProposer(address proposer);
+  error ProposalNotPending(IGovernor.ProposalState state);
+
+  function testFuzz_CancelProposalWhenPending(uint256 _actorSeed) public virtual {
     address[] memory targets = new address[](1);
     uint256[] memory values = new uint256[](1);
     bytes[] memory calldatas = new bytes[](1);
@@ -257,6 +260,39 @@ abstract contract Cancel is L2ArbitrumGovernorV2Test {
     vm.prank(address(_actor));
     governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
     assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+  }
+
+  function testFuzz_RevertIf_NotProposer(uint256 _actorSeed, address _actor) public {
+    address _proposer = _getMajorDelegate(_actorSeed);
+    vm.assume(_actor != _proposer && _actor != PROXY_ADMIN_CONTRACT);
+    address[] memory targets = new address[](1);
+    uint256[] memory values = new uint256[](1);
+    bytes[] memory calldatas = new bytes[](1);
+    string memory description = "Test";
+
+    vm.prank(_proposer);
+    governor.propose(targets, values, calldatas, description);
+
+    vm.prank(address(_actor));
+    vm.expectRevert(abi.encodeWithSelector(NotProposer.selector, _proposer));
+    governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+  }
+
+  function testFuzz_RevertIf_ProposalIsActive(uint256 _actorSeed) public {
+    address[] memory targets = new address[](1);
+    uint256[] memory values = new uint256[](1);
+    bytes[] memory calldatas = new bytes[](1);
+    string memory description = "Test";
+    address _actor = _getMajorDelegate(_actorSeed);
+
+    vm.prank(_actor);
+    uint256 proposalId = governor.propose(targets, values, calldatas, description);
+    vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
+
+    vm.prank(_actor);
+    vm.expectRevert(abi.encodeWithSelector(ProposalNotPending.selector, IGovernor.ProposalState.Active));
+    governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+    assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Active));
   }
 }
 

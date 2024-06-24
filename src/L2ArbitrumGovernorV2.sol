@@ -30,6 +30,7 @@ contract L2ArbitrumGovernorV2 is
   OwnableUpgradeable
 {
   error NotProposer(address proposer);
+  error ProposalNotPending(GovernorUpgradeable.ProposalState state);
   /// @notice address for which votes will not be counted toward quorum
   /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
   ///         are not eligible to vote. However, even if their voting/delegation is restricted their
@@ -147,6 +148,10 @@ contract L2ArbitrumGovernorV2 is
     address _proposer = proposers[GovernorUpgradeable.hashProposal(targets, values, calldatas, descriptionHash)];
     if (msg.sender != _proposer) {
       revert NotProposer(_proposer);
+    }
+    uint256 _proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+    if (state(_proposalId) != ProposalState.Pending) {
+      revert ProposalNotPending(state(_proposalId));
     }
     return GovernorUpgradeable.cancel(targets, values, calldatas, descriptionHash);
   }
