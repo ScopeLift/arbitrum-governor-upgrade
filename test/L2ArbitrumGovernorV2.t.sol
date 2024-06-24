@@ -14,6 +14,7 @@ import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
 import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 import {ERC20VotesUpgradeable} from "openzeppelin-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import {IGovernor} from "openzeppelin/governance/IGovernor.sol";
 
 // ----------------------------------------------------------------------------------------------------------------- //
 // Test Suite Base - Shared values, setup, helpers, and virtual methods needed by concrete test contracts
@@ -46,6 +47,15 @@ abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
     proxyDeployer = _createGovernorDeployer();
     proxyDeployer.setUp();
     governor = proxyDeployer.run(_implementation);
+  }
+
+  function _getMajorDelegate(uint256 _actorSeed) public pure returns (address) {
+    address[] memory _majorDelegates = new address[](4);
+    _majorDelegates[0] = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2BEAT
+    _majorDelegates[1] = 0xF4B0556B9B6F53E00A1FDD2b0478Ce841991D8fA; // olimpio
+    _majorDelegates[2] = 0x11cd09a0c5B1dc674615783b0772a9bFD53e3A8F; // Gauntlet
+    _majorDelegates[3] = 0xB933AEe47C438f22DE0747D57fc239FE37878Dd1; // Wintermute
+    return _majorDelegates[_actorSeed % _majorDelegates.length];
   }
 }
 
@@ -196,6 +206,60 @@ abstract contract Quorum is L2ArbitrumGovernorV2Test {
   }
 }
 
+abstract contract Propose is L2ArbitrumGovernorV2Test {
+  event ProposalCreated(
+    uint256 proposalId,
+    address proposer,
+    address[] targets,
+    uint256[] values,
+    string[] signatures,
+    bytes[] calldatas,
+    uint256 voteStart,
+    uint256 voteEnd,
+    string description
+  );
+
+  function testFuzz_Propose(uint256 _actorSeed) public {
+    // Proposal parameters
+    address[] memory targets = new address[](1);
+    uint256[] memory values = new uint256[](1);
+    bytes[] memory calldatas = new bytes[](1);
+    string[] memory signatures = new string[](1);
+    uint256 voteStart = vm.getBlockNumber() + governor.votingDelay();
+    uint256 voteEnd = voteStart + governor.votingPeriod();
+    string memory description = "Test";
+
+    uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+    address _actor = _getMajorDelegate(_actorSeed);
+    vm.prank(_actor);
+    vm.expectEmit();
+    emit ProposalCreated(proposalId, _actor, targets, values, signatures, calldatas, voteStart, voteEnd, description);
+    governor.propose(targets, values, calldatas, description);
+
+    assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
+  }
+}
+
+abstract contract Cancel is L2ArbitrumGovernorV2Test {
+  event ProposalCanceled(uint256 proposalId);
+
+  function testFuzz_CancelProposalAfterSucceedingButBeforeQueuing(uint256 _actorSeed) public virtual {
+    address[] memory targets = new address[](1);
+    uint256[] memory values = new uint256[](1);
+    bytes[] memory calldatas = new bytes[](1);
+    string memory description = "Test";
+
+    address _actor = _getMajorDelegate(_actorSeed);
+    vm.prank(_actor);
+    uint256 proposalId = governor.propose(targets, values, calldatas, description);
+
+    assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
+    vm.prank(address(_actor));
+    governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+    assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+  }
+}
+
 // ----------------------------------------------------------------------------------------------------------------- //
 // Concrete Test Contracts - Inherit from each abstract test and implement concrete methods for Core & Treasury case
 // ----------------------------------------------------------------------------------------------------------------- //
@@ -218,6 +282,18 @@ contract CoreGovernorQuorum is Quorum {
   }
 }
 
+contract CoreGovernorPropose is Propose {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployCoreGovernor();
+  }
+}
+
+contract CoreGovernorCancel is Cancel {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployCoreGovernor();
+  }
+}
+
 contract TreasuryGovernorInitialize is Initialize {
   function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
     return new DeployTreasuryGovernor();
@@ -231,6 +307,18 @@ contract TreasuryGovernorRelay is Relay {
 }
 
 contract TreasuryGovernorQuorum is Quorum {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployTreasuryGovernor();
+  }
+}
+
+contract TreasuryGovernorPropose is Propose {
+  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
+    return new DeployTreasuryGovernor();
+  }
+}
+
+contract TreasuryGovernorCancel is Cancel {
   function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
     return new DeployTreasuryGovernor();
   }

@@ -29,6 +29,7 @@ contract L2ArbitrumGovernorV2 is
   GovernorPreventLateQuorumUpgradeable,
   OwnableUpgradeable
 {
+  error NotProposer(address proposer);
   /// @notice address for which votes will not be counted toward quorum
   /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
   ///         are not eligible to vote. However, even if their voting/delegation is restricted their
@@ -38,7 +39,9 @@ contract L2ArbitrumGovernorV2 is
   ///         Example address that should be excluded: DAO treasury, foundation, unclaimed tokens,
   ///         burned tokens and swept (see TokenDistributor) tokens.
   ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
+
   address public constant EXCLUDE_ADDRESS = address(0xA4b86);
+  mapping(uint256 proposalId => address) public proposers;
 
   constructor() {
     _disableInitializers();
@@ -124,6 +127,28 @@ contract L2ArbitrumGovernorV2 is
     returns (uint256)
   {
     return (getPastCirculatingSupply(timepoint) * quorumNumerator(timepoint)) / quorumDenominator();
+  }
+
+  function propose(
+    address[] memory targets,
+    uint256[] memory values,
+    bytes[] memory calldatas,
+    string memory description
+  ) public override returns (uint256 _proposalId) {
+    _proposalId = GovernorUpgradeable.propose(targets, values, calldatas, description);
+    proposers[_proposalId] = msg.sender;
+  }
+
+  function cancel(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
+    public
+    override
+    returns (uint256)
+  {
+    address _proposer = proposers[GovernorUpgradeable.hashProposal(targets, values, calldatas, descriptionHash)];
+    if (msg.sender != _proposer) {
+      revert NotProposer(_proposer);
+    }
+    return GovernorUpgradeable.cancel(targets, values, calldatas, descriptionHash);
   }
 
   function _castVote(uint256 _proposalId, address _account, uint8 _support, string memory _reason, bytes memory _params)
