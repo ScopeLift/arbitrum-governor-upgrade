@@ -13,6 +13,7 @@ import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance
 import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
 import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
+import {ERC20VotesUpgradeable} from "openzeppelin-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 
 // ----------------------------------------------------------------------------------------------------------------- //
 // Test Suite Base - Shared values, setup, helpers, and virtual methods needed by concrete test contracts
@@ -25,6 +26,7 @@ abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
   address constant PROXY_ADMIN_CONTRACT = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961; // Proxy Admin Contract Address
   L2ArbitrumGovernorV2 governor;
   BaseGovernorDeployer proxyDeployer;
+  ERC20VotesUpgradeable arbitrumToken;
   ERC20Mock mockToken;
 
   // Each concrete test suite returns the appropriate concrete deploy script which will be exercised in setup
@@ -38,6 +40,7 @@ abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
     DeployImplementation _implementationDeployer = new DeployImplementation();
     _implementationDeployer.setUp();
     address _implementation = address(_implementationDeployer.run());
+    arbitrumToken = ERC20VotesUpgradeable(ARB_TOKEN_ADDRESS);
     mockToken = new ERC20Mock();
 
     proxyDeployer = _createGovernorDeployer();
@@ -56,7 +59,7 @@ abstract contract Initialize is L2ArbitrumGovernorV2Test {
     assertEq(governor.votingDelay(), INITIAL_VOTING_DELAY);
     assertEq(governor.votingPeriod(), INITIAL_VOTING_PERIOD);
     assertEq(governor.proposalThreshold(), INITIAL_PROPOSAL_THRESHOLD);
-    assertEq(address(governor.token()), address(ARB_TOKEN_ADDRESS));
+    assertEq(address(arbitrumToken), address(ARB_TOKEN_ADDRESS));
     assertEq(address(governor.timelock()), proxyDeployer.TIMELOCK_ADDRESS());
     assertEq(governor.lateQuorumVoteExtension(), INITIAL_VOTE_EXTENSION);
     assertEq(governor.owner(), GOVERNOR_OWNER);
@@ -127,60 +130,69 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
 abstract contract Quorum is L2ArbitrumGovernorV2Test {
   function setUp() public override {
     super.setUp();
-    setQuorumNumerator(1000); // 10% quorum
+    _setQuorumNumerator(3000); // 30% quorum
+    vm.roll(vm.getBlockNumber() + 1);
   }
 
-  function setQuorumNumerator(uint256 _numerator) public {
+  function _setQuorumNumerator(uint256 _numerator) internal {
     vm.prank(address(governor));
     governor.updateQuorumNumerator(_numerator);
-    vm.roll(block.number + 1);
   }
 
-  function majorDelegate(uint256 _actorSeed) public pure returns (address) {
-    if (_actorSeed % 5 == 1) {
-      return 0x0eB5B03c0303f2F47cD81d7BE4275AF8Ed347576; // Treasure
-    }
-    if (_actorSeed % 5 == 2) {
-      return 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2Beat
-    }
-    if (_actorSeed % 5 == 3) {
-      return 0xF4B0556B9B6F53E00A1FDD2b0478Ce841991D8fA; // olimpio
-    }
-    if (_actorSeed % 5 == 4) {
-      return 0x11cd09a0c5B1dc674615783b0772a9bFD53e3A8F; // Gauntlet
-    } else {
-      return 0xB933AEe47C438f22DE0747D57fc239FE37878Dd1; // Wintermute
-    }
+  function _getMajorTokenHolder(uint256 _actorSeed) internal pure returns (address) {
+    address[] memory _majorDelegates = new address[](4);
+    _majorDelegates[0] = 0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6;
+    _majorDelegates[1] = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
+    _majorDelegates[2] = 0xf7F468B184A48f6ca37EeFFE12733Ee1c16B6E26;
+    _majorDelegates[3] = 0x1190CEA3e2c8727218768bFb990C3228aA06dfA9;
+    return _majorDelegates[_actorSeed % _majorDelegates.length];
   }
 
-  function testFuzz_ReturnsCorrectQuorum(uint256 _numerator, uint256 _blockNumber) public {
+  function testFuzz_ReturnsCorrectQuorum(uint256 _numerator, uint256 _pastBlockNumber) public {
     _numerator = bound(_numerator, 1, governor.quorumDenominator());
-    setQuorumNumerator(_numerator);
-    _blockNumber = bound(_blockNumber, 1, block.number - 1);
+    _setQuorumNumerator(_numerator);
+    vm.roll(vm.getBlockNumber() + 1);
+    _pastBlockNumber = bound(_pastBlockNumber, 1, vm.getBlockNumber() - 1);
 
-    uint256 tokenPastTotalSupply = governor.token().getPastTotalSupply(_blockNumber);
-    uint256 excludeAddressVotes = governor.token().getPastVotes(governor.EXCLUDE_ADDRESS(), _blockNumber);
-    uint256 expectedQuorum = (tokenPastTotalSupply - excludeAddressVotes) * governor.quorumNumerator(_blockNumber)
+    uint256 tokenPastTotalSupply = arbitrumToken.getPastTotalSupply(_pastBlockNumber);
+    uint256 excludeAddressVotes = arbitrumToken.getPastVotes(governor.EXCLUDE_ADDRESS(), _pastBlockNumber);
+    uint256 expectedQuorum = (tokenPastTotalSupply - excludeAddressVotes) * governor.quorumNumerator(_pastBlockNumber)
       / governor.quorumDenominator();
-    vm.assertEq(governor.quorum(_blockNumber), expectedQuorum);
+    vm.assertEq(governor.quorum(_pastBlockNumber), expectedQuorum);
   }
 
-  function test_ReturnsCorrectQuorumAfterDelegatingToExcludeAddress(
-    uint256 _numerator,
-    uint256 _blockNumber,
-    uint256 _actorSeed
-  ) public {
-    vm.prank(majorDelegate(_actorSeed));
-    governor.token().delegate(governor.EXCLUDE_ADDRESS());
+  function testFuzz_ReturnsCorrectQuorumAfterDelegatingToExcludeAddress(uint256 _numerator, uint256 _actorSeed) public {
+    // Set a random numerator
     _numerator = bound(_numerator, 1, governor.quorumDenominator());
-    setQuorumNumerator(_numerator);
-    _blockNumber = bound(_blockNumber, 1, block.number - 1);
+    _setQuorumNumerator(_numerator);
+    vm.roll(vm.getBlockNumber() + 1);
 
-    uint256 tokenPastTotalSupply = governor.token().getPastTotalSupply(_blockNumber);
-    uint256 excludeAddressVotes = governor.token().getPastVotes(governor.EXCLUDE_ADDRESS(), _blockNumber);
-    uint256 expectedQuorum = (tokenPastTotalSupply - excludeAddressVotes) * governor.quorumNumerator(_blockNumber)
+    // Keep track of the previous quorum and exclude address votes
+    uint256 previousQuorum = governor.quorum(vm.getBlockNumber() - 1);
+    uint256 previousExcludeAddressVotes =
+      arbitrumToken.getPastVotes(governor.EXCLUDE_ADDRESS(), vm.getBlockNumber() - 1);
+
+    // Delegate a major token holder's balance to the exclude address
+    address _actor = _getMajorTokenHolder(_actorSeed);
+    vm.startPrank(_actor);
+    arbitrumToken.delegate(governor.EXCLUDE_ADDRESS());
+    vm.stopPrank();
+    vm.roll(vm.getBlockNumber() + 1);
+
+    uint256 previousBlock = vm.getBlockNumber() - 1;
+    uint256 tokenPastTotalSupply = arbitrumToken.getPastTotalSupply(previousBlock);
+    uint256 excludeAddressVotes = arbitrumToken.getPastVotes(governor.EXCLUDE_ADDRESS(), previousBlock);
+    uint256 expectedQuorum = (tokenPastTotalSupply - excludeAddressVotes) * governor.quorumNumerator(previousBlock)
       / governor.quorumDenominator();
-    vm.assertEq(governor.quorum(_blockNumber), expectedQuorum);
+
+    vm.assertEq(governor.quorum(previousBlock), expectedQuorum);
+    // Exclude address votes should increase by the actor's balance
+    vm.assertEq(
+      arbitrumToken.getPastVotes(governor.EXCLUDE_ADDRESS(), previousBlock),
+      previousExcludeAddressVotes + arbitrumToken.balanceOf(_actor)
+    );
+    // Quorum should decrease
+    vm.assertTrue(previousQuorum > expectedQuorum);
   }
 }
 
