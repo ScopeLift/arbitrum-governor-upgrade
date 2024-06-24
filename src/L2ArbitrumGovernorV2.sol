@@ -29,7 +29,6 @@ contract L2ArbitrumGovernorV2 is
   GovernorPreventLateQuorumUpgradeable,
   OwnableUpgradeable
 {
-  error NotProposer(address proposer);
   error ProposalNotPending(GovernorUpgradeable.ProposalState state);
   /// @notice address for which votes will not be counted toward quorum
   /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
@@ -42,7 +41,6 @@ contract L2ArbitrumGovernorV2 is
   ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
 
   address public constant EXCLUDE_ADDRESS = address(0xA4b86);
-  mapping(uint256 proposalId => address) public proposers;
 
   constructor() {
     _disableInitializers();
@@ -130,25 +128,11 @@ contract L2ArbitrumGovernorV2 is
     return (getPastCirculatingSupply(timepoint) * quorumNumerator(timepoint)) / quorumDenominator();
   }
 
-  function propose(
-    address[] memory targets,
-    uint256[] memory values,
-    bytes[] memory calldatas,
-    string memory description
-  ) public override returns (uint256 _proposalId) {
-    _proposalId = GovernorUpgradeable.propose(targets, values, calldatas, description);
-    proposers[_proposalId] = msg.sender;
-  }
-
   function cancel(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
     public
     override
     returns (uint256)
   {
-    address _proposer = proposers[GovernorUpgradeable.hashProposal(targets, values, calldatas, descriptionHash)];
-    if (msg.sender != _proposer) {
-      revert NotProposer(_proposer);
-    }
     uint256 _proposalId = hashProposal(targets, values, calldatas, descriptionHash);
     if (state(_proposalId) != ProposalState.Pending) {
       revert ProposalNotPending(state(_proposalId));

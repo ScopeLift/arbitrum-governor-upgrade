@@ -243,7 +243,7 @@ abstract contract Propose is L2ArbitrumGovernorV2Test {
 abstract contract Cancel is L2ArbitrumGovernorV2Test {
   event ProposalCanceled(uint256 proposalId);
 
-  error NotProposer(address proposer);
+  error GovernorOnlyProposer(address proposer);
   error ProposalNotPending(IGovernor.ProposalState state);
 
   function testFuzz_CancelProposalWhenPending(uint256 _actorSeed) public virtual {
@@ -274,7 +274,7 @@ abstract contract Cancel is L2ArbitrumGovernorV2Test {
     governor.propose(targets, values, calldatas, description);
 
     vm.prank(address(_actor));
-    vm.expectRevert(abi.encodeWithSelector(NotProposer.selector, _proposer));
+    vm.expectRevert(abi.encodeWithSelector(GovernorOnlyProposer.selector, _actor));
     governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
   }
 
