@@ -20,7 +20,9 @@ import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.
 
 abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
   uint256 constant FORK_BLOCK = 220_819_857; // Arbitrary recent block
-  address constant proxyAdminContract = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961; // Proxy Admin Contract Address
+  /// @dev Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal, so we
+  /// hardcode the address below
+  address constant PROXY_ADMIN_CONTRACT = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961; // Proxy Admin Contract Address
   L2ArbitrumGovernorV2 governor;
   BaseGovernorDeployer proxyDeployer;
   ERC20Mock mockToken;
@@ -114,7 +116,7 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
   }
 
   function testFuzz_RevertIf_NotOwner(address _actor, uint256 _numerator) public {
-    vm.assume(_actor != GOVERNOR_OWNER && _actor != proxyAdminContract);
+    vm.assume(_actor != GOVERNOR_OWNER && _actor != PROXY_ADMIN_CONTRACT);
     _numerator = bound(_numerator, 1, governor.quorumDenominator());
     vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _actor));
     vm.prank(_actor);
