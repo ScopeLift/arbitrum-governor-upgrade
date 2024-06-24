@@ -69,6 +69,8 @@ abstract contract Initialize is L2ArbitrumGovernorV2Test {
 }
 
 abstract contract Relay is L2ArbitrumGovernorV2Test {
+  error OwnableUnauthorizedAccount(address actor);
+
   function testFuzz_CanRelayUpdateQuorumNumerator(uint256 _numerator) public {
     _numerator = bound(_numerator, 1, governor.quorumDenominator());
     vm.prank(PROXY_OWNER);
@@ -109,6 +111,14 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
     vm.prank(PROXY_OWNER);
     governor.relay(address(mockToken), 0, abi.encodeWithSelector(mockToken.transfer.selector, _to, _amount));
     assertEq(mockToken.balanceOf(_to), _amount);
+  }
+
+  function testFuzz_RevertIf_NotOwner(address _actor, uint256 _numerator) public {
+    vm.assume(_actor != PROXY_OWNER);
+    _numerator = bound(_numerator, 1, governor.quorumDenominator());
+    vm.prank(_actor);
+    vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _actor));
+    governor.relay(address(governor), 0, abi.encodeWithSelector(governor.updateQuorumNumerator.selector, _numerator));
   }
 }
 
