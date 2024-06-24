@@ -29,7 +29,9 @@ contract L2ArbitrumGovernorV2 is
   GovernorPreventLateQuorumUpgradeable,
   OwnableUpgradeable
 {
+  /// @notice Error thrown when canceling a non-pending proposal.
   error ProposalNotPending(GovernorUpgradeable.ProposalState state);
+
   /// @notice address for which votes will not be counted toward quorum
   /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
   ///         are not eligible to vote. However, even if their voting/delegation is restricted their
@@ -39,7 +41,6 @@ contract L2ArbitrumGovernorV2 is
   ///         Example address that should be excluded: DAO treasury, foundation, unclaimed tokens,
   ///         burned tokens and swept (see TokenDistributor) tokens.
   ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
-
   address public constant EXCLUDE_ADDRESS = address(0xA4b86);
 
   constructor() {
