@@ -219,7 +219,7 @@ abstract contract Propose is L2ArbitrumGovernorV2Test {
     string description
   );
 
-  function testFuzz_Propose(uint256 _actorSeed) public {
+  function testFuzz_CreatesProposalAndEmitsEvent(uint256 _actorSeed) public {
     // Proposal parameters
     address[] memory targets = new address[](1);
     uint256[] memory values = new uint256[](1);
@@ -246,7 +246,7 @@ abstract contract Cancel is L2ArbitrumGovernorV2Test {
   error GovernorOnlyProposer(address proposer);
   error ProposalNotPending(IGovernor.ProposalState state);
 
-  function testFuzz_CancelProposalWhenPending(uint256 _actorSeed) public virtual {
+  function testFuzz_CancelsPendingProposal(uint256 _actorSeed) public virtual {
     address[] memory targets = new address[](1);
     uint256[] memory values = new uint256[](1);
     bytes[] memory calldatas = new bytes[](1);
