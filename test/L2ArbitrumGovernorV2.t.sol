@@ -140,12 +140,12 @@ abstract contract Quorum is L2ArbitrumGovernorV2Test {
   }
 
   function _getMajorTokenHolder(uint256 _actorSeed) internal pure returns (address) {
-    address[] memory _majorDelegates = new address[](4);
-    _majorDelegates[0] = 0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6;
-    _majorDelegates[1] = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
-    _majorDelegates[2] = 0xf7F468B184A48f6ca37EeFFE12733Ee1c16B6E26;
-    _majorDelegates[3] = 0x1190CEA3e2c8727218768bFb990C3228aA06dfA9;
-    return _majorDelegates[_actorSeed % _majorDelegates.length];
+    address[] memory _majorTokenHolders = new address[](4);
+    _majorTokenHolders[0] = 0x62383739D68Dd0F844103Db8dFb05a7EdED5BBE6;
+    _majorTokenHolders[1] = 0xF977814e90dA44bFA03b6295A0616a897441aceC;
+    _majorTokenHolders[2] = 0xf7F468B184A48f6ca37EeFFE12733Ee1c16B6E26;
+    _majorTokenHolders[3] = 0x1190CEA3e2c8727218768bFb990C3228aA06dfA9;
+    return _majorTokenHolders[_actorSeed % _majorTokenHolders.length];
   }
 
   function testFuzz_ReturnsCorrectQuorum(uint256 _numerator, uint256 _pastBlockNumber) public {
