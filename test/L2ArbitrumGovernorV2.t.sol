@@ -49,12 +49,7 @@ abstract contract L2ArbitrumGovernorV2Test is Test, SharedGovernorConstants {
     governor = proxyDeployer.run(_implementation);
   }
 
-  function _getMajorDelegate(uint256 _actorSeed) public pure returns (address) {
-    address[] memory _majorDelegates = new address[](4);
-    _majorDelegates[0] = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2BEAT
-    _majorDelegates[1] = 0xF4B0556B9B6F53E00A1FDD2b0478Ce841991D8fA; // olimpio
-    _majorDelegates[2] = 0x11cd09a0c5B1dc674615783b0772a9bFD53e3A8F; // Gauntlet
-    _majorDelegates[3] = 0xB933AEe47C438f22DE0747D57fc239FE37878Dd1; // Wintermute
+  function _getMajorDelegate(uint256 _actorSeed) public view returns (address) {
     return _majorDelegates[_actorSeed % _majorDelegates.length];
   }
 }
