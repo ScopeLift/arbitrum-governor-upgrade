@@ -15,9 +15,12 @@ contract SharedGovernorConstants {
   address public constant ARBITRUM_TREASURY_GOVERNOR = 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4;
   address public constant ARBITRUM_TREASURY_GOVERNOR_TIMELOCK = 0xbFc1FECa8B09A5c5D3EFfE7429eBE24b9c09EF58;
 
+  address public constant L1_TIMELOCK = 0xE6841D92B0C345144506576eC13ECf5103aC7f49;
   address public constant ARB_SYS = 0x0000000000000000000000000000000000000064;
   address public constant SECURITY_COUNCIL_9 = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
   address public constant UPGRADE_EXECUTOR = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827;
+  address public constant ARB_ONE_DELAYED_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
+  address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
   // These values match the current production values for both governors. Note that they are expressed in L1 blocks,
   // with an assumed 12 second block time, because on Arbitrum, block.number returns the number of the L1.
