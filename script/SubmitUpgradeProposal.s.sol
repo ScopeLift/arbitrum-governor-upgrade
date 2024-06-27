@@ -11,7 +11,7 @@ import {AccessControlUpgradeable} from "openzeppelin-upgradeable/access/AccessCo
 contract SubmitUpgradeProposal is Script, SharedGovernorConstants {
   address PROPOSER = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2Beat
 
-  function proposeUpgradeAndReturnCalldata(address _timelock, address _currentGovernor, address _newGovernor)
+  function proposeUpgradeAndReturnCalldata(address _timelockRolesUpgrader)
     public
     returns (
       address[] memory targets,
@@ -26,19 +26,95 @@ contract SubmitUpgradeProposal is Script, SharedGovernorConstants {
     calldatas = new bytes[](1);
     description = "Upgrade timelock roles";
 
-    bytes memory sampleData =
-      hex"928c169a000000000000000000000000e6841d92b0c345144506576ec13ecf5103ac7f49000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000002c401d5062a000000000000000000000000a723c008e76e379c55599d2e4d93879beafda79c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000006fa14163ce89ece2936ccf996408ac1ec19a02a6971a2e90324967f67f8a11cb000000000000000000000000000000000000000000000000000000000003f48000000000000000000000000000000000000000000000000000000000000001e00000000000000000000000004dbd4fc535ac27206064b68ffcf827b0a60bab3f000000000000000000000000cf57572261c7c2bcf21ffd220ea7d1a27d40a82700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e41cff79cd000000000000000000000000c7183455a4c133ae270771860664b6b7ec320bb1000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000648dcb915600000000000000000000000034d45e99f7d8c45ed05b5ca72d54bbd1fb3f98f0000000000000000000000000f07ded9dc292157749b6fd268e37df6ea38395b900000000000000000000000013398e151530abdf387d8a1fa4c3a75ec355cc4d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-
     targets[0] = ARB_SYS;
-    // TODO: Write the calldata for the ArbSys.sendTxToL1 call
-    // calldatas[0] = abi.encodeWithSelector(ArbSys.sendTxToL1.selector, abi.encodeWithSelector("TODO"));
-    calldatas[0] = sampleData;
+    bytes memory proposalCalldata =
+      createProposal(L1_TIMELOCK, description, _timelockRolesUpgrader, ARB_ONE_DELAYED_INBOX, UPGRADE_EXECUTOR);
+    calldatas[0] = proposalCalldata;
+
     vm.startBroadcast(PROPOSER);
-    _proposalId = GovernorUpgradeable(payable(_currentGovernor)).propose(targets, values, calldatas, description);
+    _proposalId = GovernorUpgradeable(payable(ARBITRUM_CORE_GOVERNOR)).propose(targets, values, calldatas, description);
     vm.stopBroadcast();
+  }
+
+  function createProposal(
+    address l1TimelockAddr,
+    string memory proposalDescription,
+    address oneOffUpgradeAddr,
+    address arbOneInboxAddr,
+    address upgradeExecutorAddr
+  ) public pure returns (bytes memory) {
+    address retryableTicketMagic = RETRYABLE_TICKET_MAGIC;
+    // uint256 minDelay = IL1Timelock(l1TimelockAddr).getMinDelay();
+    uint256 minDelay = 259_200; // TODO: Update to use getMinDelay() when it's available
+
+    // the data to call the upgrade executor with
+    // it tells the upgrade executor how to call the upgrade contract, and what calldata to provide to it
+    bytes memory upgradeExecutorCallData = abi.encodeWithSelector(
+      IUpgradeExecutor.execute.selector,
+      oneOffUpgradeAddr,
+      abi.encodeWithSelector(ITimelockRolesUpgrader.perform.selector)
+    );
+
+    // the data provided to call the l1 timelock with
+    // specifies how to create a retryable ticket, which will then be used to call the upgrade executor with the
+    // data created from the step above
+    bytes memory l1TimelockData = abi.encodeWithSelector(
+      IL1Timelock.schedule.selector,
+      retryableTicketMagic, // tells the l1 timelock that we want to make a retryable, instead of an l1 upgrade
+      0, // ignored for l2 upgrades
+      abi.encode( // these are the retryable data params
+        arbOneInboxAddr, // the inbox we want to use, should be arb one or nova inbox
+        upgradeExecutorAddr, // the upgrade executor on the l2 network
+        0, // no value in this upgrade
+        0, // max gas - will be filled in when the retryable is actually executed
+        0, // max fee per gas - will be filled in when the retryable is actually executed
+        upgradeExecutorCallData // call data created in the previous step
+      ),
+      bytes32(0), // no predecessor
+      keccak256(abi.encodePacked(proposalDescription)), // prop description
+      minDelay // delay for this proposal
+    );
+
+    // the data provided to the L2 Arbitrum Governor in the propose() method
+    // the target will be the ArbSys address on Arb One
+    bytes memory proposalCalldata = abi.encodeWithSelector(
+      IArbSys.sendTxToL1.selector, // the execution of the proposal will create an L2->L1 cross chain message
+      l1TimelockAddr, // the target of the cross chain message is the L1 timelock
+      l1TimelockData // call the l1 timelock with the data created in the previous step
+    );
+    return proposalCalldata;
   }
 }
 
-interface ArbSys {
-  function sendTxToL1(address destination, bytes memory calldataData) external payable;
+interface IUpgradeExecutor {
+  function execute(address to, bytes calldata data) external payable;
+}
+
+interface IL1Timelock {
+  function schedule(
+    address target,
+    uint256 value,
+    bytes calldata data,
+    bytes32 predecessor,
+    bytes32 salt,
+    uint256 delay
+  ) external;
+  function getMinDelay() external view returns (uint256);
+}
+
+interface IArbSys {
+  function sendTxToL1(address destination, bytes calldata data) external payable returns (uint256);
+}
+
+interface IL2ArbitrumGovernor {
+  function propose(
+    address[] memory targets,
+    uint256[] memory values,
+    bytes[] memory calldatas,
+    string memory description
+  ) external returns (uint256);
+}
+
+interface ITimelockRolesUpgrader {
+  function perform() external;
 }

@@ -10,13 +10,30 @@ import {IGovernor} from "openzeppelin-contracts/contracts/governance/IGovernor.s
 import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
 import {DeployCoreGovernor} from "script/DeployCoreGovernor.s.sol";
 import {DeployTreasuryGovernor} from "script/DeployTreasuryGovernor.s.sol";
-// import {AccessControlUpgradeable} from "openzeppelin-upgradeable/access/AccessControlUpgradeable.sol";
 import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
+import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
+import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
+import {DeployImplementation} from "script/DeployImplementation.s.sol";
 
-abstract contract SubmitUpgradeProposalTest is L2ArbitrumGovernorV2Test {
+contract SubmitUpgradeProposalTest is SharedGovernorConstants, Test {
+  uint256 constant FORK_BLOCK = 220_819_857; // Arbitrary recent block
+  /// @dev Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal, so we
+  /// hardcode the address below
+  address constant PROXY_ADMIN_CONTRACT = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961; // Proxy Admin Contract Address
+
   SubmitUpgradeProposal submitUpgradeProposal;
-  GovernorUpgradeable currentGovernor;
-  TimelockControllerUpgradeable currentTimelock;
+  BaseGovernorDeployer proxyCoreGovernorDeployer;
+  BaseGovernorDeployer proxyTreasuryGovernorDeployer;
+
+  // Current governors and timelocks
+  GovernorUpgradeable currentCoreGovernor;
+  TimelockControllerUpgradeable currentCoreTimelock;
+  GovernorUpgradeable currentTreasuryGovernor;
+  TimelockControllerUpgradeable currentTreasuryTimelock;
+
+  // New governors
+  L2ArbitrumGovernorV2 newCoreGovernor;
+  L2ArbitrumGovernorV2 newTreasuryGovernor;
 
   enum VoteType {
     Against,
@@ -24,14 +41,37 @@ abstract contract SubmitUpgradeProposalTest is L2ArbitrumGovernorV2Test {
     Abstain
   }
 
-  function _currentGovernorAddress() internal pure virtual returns (address);
-  function _currentTimelockAddress() internal pure virtual returns (address);
+  function setUp() public {
+    vm.createSelectFork(
+      vm.envOr("ARBITRUM_ONE_RPC_URL", string("Please set ARBITRUM_ONE_RPC_URL in your .env file")), FORK_BLOCK
+    );
 
-  function setUp() public override {
-    super.setUp();
     submitUpgradeProposal = new SubmitUpgradeProposal();
-    currentGovernor = GovernorUpgradeable(payable(_currentGovernorAddress()));
-    currentTimelock = TimelockControllerUpgradeable(payable(_currentTimelockAddress()));
+
+    // Deploy Governor implementation contract
+    DeployImplementation _implementationDeployer = new DeployImplementation();
+    _implementationDeployer.setUp();
+    address _implementation = address(_implementationDeployer.run());
+
+    proxyCoreGovernorDeployer = new DeployCoreGovernor();
+    proxyTreasuryGovernorDeployer = new DeployTreasuryGovernor();
+    proxyCoreGovernorDeployer.setUp();
+    proxyTreasuryGovernorDeployer.setUp();
+
+    // Deploy Governor proxy contracts
+    newCoreGovernor = proxyCoreGovernorDeployer.run(_implementation);
+    newTreasuryGovernor = proxyTreasuryGovernorDeployer.run(_implementation);
+
+    // Current governors and timelocks
+    currentCoreGovernor = GovernorUpgradeable(payable(ARBITRUM_CORE_GOVERNOR));
+    currentCoreTimelock = TimelockControllerUpgradeable(payable(ARBITRUM_CORE_GOVERNOR_TIMELOCK));
+    currentTreasuryGovernor = GovernorUpgradeable(payable(ARBITRUM_TREASURY_GOVERNOR));
+    currentTreasuryTimelock = TimelockControllerUpgradeable(payable(ARBITRUM_TREASURY_GOVERNOR_TIMELOCK));
+
+    // Deploy a mock ArbSys contract at ARB_SYS
+    MockArbSys mockArbSys = new MockArbSys();
+    bytes memory code = address(mockArbSys).code;
+    vm.etch(ARB_SYS, code);
   }
 
   function test_SuccessfullyExecuteUpgradeProposal() public {
@@ -43,41 +83,40 @@ abstract contract SubmitUpgradeProposalTest is L2ArbitrumGovernorV2Test {
       string memory _description,
       uint256 _proposalId
     ) = submitUpgradeProposal.proposeUpgradeAndReturnCalldata(
-      _currentTimelockAddress(), _currentGovernorAddress(), address(governor)
+      ARBITRUM_CORE_GOVERNOR //maybe also the treasury governor to use in createProposal
     );
-    assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Pending));
-    vm.roll(vm.getBlockNumber() + currentGovernor.votingDelay() + 1);
-    assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Pending));
+    vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingDelay() + 1);
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
 
     // Vote
     for (uint256 i; i < _majorDelegates.length; i++) {
       vm.prank(_majorDelegates[i]);
-      currentGovernor.castVote(_proposalId, uint8(VoteType.For));
+      currentCoreGovernor.castVote(_proposalId, uint8(VoteType.For));
     }
 
     // Success
-    vm.roll(vm.getBlockNumber() + governor.votingPeriod() + 1);
-    assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Succeeded));
+    vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingPeriod() + 1);
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Succeeded));
 
     // Queue
-    currentGovernor.queue(_targets, _values, _calldatas, keccak256(bytes(_description)));
-    assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Queued));
-    vm.warp(vm.getBlockTimestamp() + currentTimelock.getMinDelay() + 1);
+    currentCoreGovernor.queue(_targets, _values, _calldatas, keccak256(bytes(_description)));
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Queued));
+    vm.warp(vm.getBlockTimestamp() + currentCoreTimelock.getMinDelay() + 1);
 
     // Execute
-    // TODO: Update _calldatas to work with sendTxToL1.
-    currentGovernor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
-    assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Executed));
+    currentCoreGovernor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Executed));
   }
 
   function test_ExecuteUpgradeUsingUpgradeExecutor() public {
     TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
       ARBITRUM_CORE_GOVERNOR_TIMELOCK,
       ARBITRUM_CORE_GOVERNOR,
-      address(governor),
+      address(newCoreGovernor),
       ARBITRUM_TREASURY_GOVERNOR_TIMELOCK,
       ARBITRUM_TREASURY_GOVERNOR,
-      address(governor)
+      address(newTreasuryGovernor)
     );
 
     address target = address(timelockRolesUpgrader);
@@ -86,80 +125,15 @@ abstract contract SubmitUpgradeProposalTest is L2ArbitrumGovernorV2Test {
     vm.prank(SECURITY_COUNCIL_9);
     IUpgradeExecutor(UPGRADE_EXECUTOR).execute(target, data);
 
-    assertEq(currentTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(governor)), true);
-    assertEq(currentTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(governor)), true);
-    assertEq(currentTimelock.hasRole(keccak256("PROPOSER_ROLE"), _currentGovernorAddress()), false);
-    assertEq(currentTimelock.hasRole(keccak256("CANCELLER_ROLE"), _currentGovernorAddress()), false);
-  }
+    assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newCoreGovernor)), true);
+    assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newCoreGovernor)), true);
+    assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), ARBITRUM_CORE_GOVERNOR), false);
+    assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), ARBITRUM_CORE_GOVERNOR), false);
 
-  function createProposal(
-    address l1TimelockAddr,
-    string memory proposalDescription,
-    address oneOffUpgradeAddr,
-    address arbOneInboxAddr,
-    address upgradeExecutorAddr
-  ) public returns (bytes memory) {
-    address retryableTicketMagic = RETRYABLE_TICKET_MAGIC;
-    // uint256 minDelay = IL1Timelock(l1TimelockAddr).getMinDelay();
-    uint256 minDelay = 259_200; // TODO: Update to use getMinDelay() when it's available
-
-    // the data to call the upgrade executor with
-    // it tells the upgrade executor how to call the upgrade contract, and what calldata to provide to it
-    bytes memory upgradeExecutorCallData = abi.encodeWithSelector(
-      IUpgradeExecutor.execute.selector,
-      oneOffUpgradeAddr,
-      abi.encodeWithSelector(TimelockRolesUpgrader.perform.selector)
-    );
-
-    // the data provided to call the l1 timelock with
-    // specifies how to create a retryable ticket, which will then be used to call the upgrade executor with the
-    // data created from the step above
-    bytes memory l1TimelockData = abi.encodeWithSelector(
-      IL1Timelock.schedule.selector,
-      retryableTicketMagic, // tells the l1 timelock that we want to make a retryable, instead of an l1 upgrade
-      0, // ignored for l2 upgrades
-      abi.encode( // these are the retryable data params
-        arbOneInboxAddr, // the inbox we want to use, should be arb one or nova inbox
-        upgradeExecutorAddr, // the upgrade executor on the l2 network
-        0, // no value in this upgrade
-        0, // max gas - will be filled in when the retryable is actually executed
-        0, // max fee per gas - will be filled in when the retryable is actually executed
-        upgradeExecutorCallData // call data created in the previous step
-      ),
-      bytes32(0), // no predecessor
-      keccak256(abi.encodePacked(proposalDescription)), // prop description
-      minDelay // delay for this proposal
-    );
-
-    // the data provided to the L2 Arbitrum Governor in the propose() method
-    // the target will be the ArbSys address on Arb One
-    bytes memory proposal = abi.encodeWithSelector(
-      IArbSys.sendTxToL1.selector, // the execution of the proposal will create an L2->L1 cross chain message
-      l1TimelockAddr, // the target of the cross chain message is the L1 timelock
-      l1TimelockData // call the l1 timelock with the data created in the previous step
-    );
-    return proposal;
-  }
-
-  function test_formulateProposalCalldata() public {
-    TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
-      ARBITRUM_CORE_GOVERNOR_TIMELOCK,
-      ARBITRUM_CORE_GOVERNOR,
-      address(governor),
-      ARBITRUM_TREASURY_GOVERNOR_TIMELOCK,
-      ARBITRUM_TREASURY_GOVERNOR,
-      address(governor)
-    );
-
-    bytes memory proposalCalldata = createProposal(
-      L1_TIMELOCK,
-      "Upgrade Governor Timelock Roles",
-      address(timelockRolesUpgrader),
-      ARB_ONE_DELAYED_INBOX,
-      UPGRADE_EXECUTOR
-    );
-    console2.log("proposalCalldata is:");
-    console2.logBytes(proposalCalldata);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newTreasuryGovernor)), true);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newTreasuryGovernor)), true);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), ARBITRUM_TREASURY_GOVERNOR), false);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), ARBITRUM_TREASURY_GOVERNOR), false);
   }
 }
 
@@ -167,59 +141,6 @@ interface IUpgradeExecutor {
   function execute(address to, bytes calldata data) external payable;
 }
 
-interface IL1Timelock {
-  // function RETRYABLE_TICKET_MAGIC() external returns (address) {
-  //   return RETRYABLE_TICKET_MAGIC;
-  // }
-
-  function schedule(
-    address target,
-    uint256 value,
-    bytes calldata data,
-    bytes32 predecessor,
-    bytes32 salt,
-    uint256 delay
-  ) external;
-  function getMinDelay() external view returns (uint256);
-}
-
-interface IArbSys {
-  function sendTxToL1(address destination, bytes calldata data) external payable returns (uint256);
-}
-
-interface IL2ArbitrumGovernor {
-  function propose(
-    address[] memory targets,
-    uint256[] memory values,
-    bytes[] memory calldatas,
-    string memory description
-  ) external returns (uint256);
-}
-
-contract CoreGovernorUpgrade is SubmitUpgradeProposalTest {
-  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
-    return new DeployCoreGovernor();
-  }
-
-  function _currentGovernorAddress() internal pure override returns (address) {
-    return ARBITRUM_CORE_GOVERNOR;
-  }
-
-  function _currentTimelockAddress() internal pure override returns (address) {
-    return ARBITRUM_CORE_GOVERNOR_TIMELOCK;
-  }
-}
-
-contract TreasuryGovernorUpgrade is SubmitUpgradeProposalTest {
-  function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
-    return new DeployTreasuryGovernor();
-  }
-
-  function _currentGovernorAddress() internal pure override returns (address) {
-    return ARBITRUM_TREASURY_GOVERNOR;
-  }
-
-  function _currentTimelockAddress() internal pure override returns (address) {
-    return ARBITRUM_TREASURY_GOVERNOR_TIMELOCK;
-  }
+contract MockArbSys {
+  function sendTxToL1(address _l1Target, bytes calldata _data) external {}
 }

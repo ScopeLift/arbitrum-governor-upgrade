@@ -19,6 +19,12 @@ contract TimelockRolesUpgrader {
     address _currentTreasuryGovernor,
     address _newTreasuryGovernor
   ) {
+    if (
+      _coreTimelock == address(0) || _currentCoreGovernor == address(0) || _newCoreGovernor == address(0)
+        || _treasuryTimelock == address(0) || _currentTreasuryGovernor == address(0) || _newTreasuryGovernor == address(0)
+    ) {
+      revert("TimelockRolesUpgrader: zero address");
+    }
     CORE_TIMELOCK = _coreTimelock;
     TREASURY_TIMELOCK = _treasuryTimelock;
     CURRENT_CORE_GOVERNOR = _currentCoreGovernor;
@@ -38,8 +44,12 @@ contract TimelockRolesUpgrader {
     _revokeRole(_timelock, _oldGovernor, keccak256("PROPOSER_ROLE"));
     _revokeRole(_timelock, _oldGovernor, keccak256("CANCELLER_ROLE"));
 
-    // TODO: determine if require checks are needed
-    // (https://github.com/ArbitrumFoundation/governance/pull/284#discussion_r1636080237)
+    // Check roles were changed
+    TimelockControllerUpgradeable timelock = TimelockControllerUpgradeable(payable(_timelock));
+    require(timelock.hasRole(keccak256("PROPOSER_ROLE"), _newGovernor), "Adder role not granted");
+    require(timelock.hasRole(keccak256("CANCELLER_ROLE"), _newGovernor), "Replacer role not granted");
+    require(!timelock.hasRole(keccak256("PROPOSER_ROLE"), _oldGovernor), "Rotator role not granted");
+    require(!timelock.hasRole(keccak256("CANCELLER_ROLE"), _oldGovernor), "Remover role not granted");
   }
 
   function _grantRole(address _timelock, address _governor, bytes32 _role) private {
