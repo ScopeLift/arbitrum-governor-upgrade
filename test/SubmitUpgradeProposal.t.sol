@@ -82,7 +82,7 @@ contract SubmitUpgradeProposalTest is SharedGovernorConstants, Test {
       bytes[] memory _calldatas,
       string memory _description,
       uint256 _proposalId
-    ) = submitUpgradeProposal.proposeUpgradeAndReturnCalldata(
+    ) = submitUpgradeProposal.run(
       ARBITRUM_CORE_GOVERNOR //maybe also the treasury governor to use in createProposal
     );
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Pending));

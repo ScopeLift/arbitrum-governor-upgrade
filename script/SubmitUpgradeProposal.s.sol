@@ -14,8 +14,17 @@ contract SubmitUpgradeProposal is Script, SharedGovernorConstants {
   // TODO: Update `minDelay` to latest getMinDelay() from L1Timelock.
   uint256 minDelay = 259_200;
 
-  function run(address _timelockRolesUpgrader) public {
-    proposeUpgradeAndReturnCalldata(_timelockRolesUpgrader);
+  function run(address _timelockRolesUpgrader)
+    public
+    returns (
+      address[] memory targets,
+      uint256[] memory values,
+      bytes[] memory calldatas,
+      string memory description,
+      uint256 _proposalId
+    )
+  {
+    return proposeUpgradeAndReturnCalldata(_timelockRolesUpgrader);
   }
 
   function proposeUpgradeAndReturnCalldata(address _timelockRolesUpgrader)
