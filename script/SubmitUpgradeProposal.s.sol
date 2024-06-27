@@ -9,10 +9,17 @@ import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorU
 import {AccessControlUpgradeable} from "openzeppelin-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract SubmitUpgradeProposal is Script, SharedGovernorConstants {
+  // TODO: Update `PROPOSER` to script msg.sender who will subtmit the proposal.
   address PROPOSER = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2Beat
+  // TODO: Update `minDelay` to latest getMinDelay() from L1Timelock.
+  uint256 minDelay = 259_200;
+
+  function run(address _timelockRolesUpgrader) public {
+    proposeUpgradeAndReturnCalldata(_timelockRolesUpgrader);
+  }
 
   function proposeUpgradeAndReturnCalldata(address _timelockRolesUpgrader)
-    public
+    internal
     returns (
       address[] memory targets,
       uint256[] memory values,
@@ -42,10 +49,8 @@ contract SubmitUpgradeProposal is Script, SharedGovernorConstants {
     address oneOffUpgradeAddr,
     address arbOneInboxAddr,
     address upgradeExecutorAddr
-  ) public pure returns (bytes memory) {
+  ) internal view returns (bytes memory) {
     address retryableTicketMagic = RETRYABLE_TICKET_MAGIC;
-    // uint256 minDelay = IL1Timelock(l1TimelockAddr).getMinDelay();
-    uint256 minDelay = 259_200; // TODO: Update to use getMinDelay() when it's available
 
     // the data to call the upgrade executor with
     // it tells the upgrade executor how to call the upgrade contract, and what calldata to provide to it
