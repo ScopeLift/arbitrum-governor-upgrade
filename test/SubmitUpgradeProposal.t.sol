@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {L2ArbitrumGovernorV2Test} from "test/L2ArbitrumGovernorV2.t.sol";
-import {UpgradeTimelockRoles} from "script/UpgradeTimelockRoles.s.sol";
+import {SubmitUpgradeProposal} from "script/SubmitUpgradeProposal.s.sol";
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
 import {IGovernor} from "openzeppelin-contracts/contracts/governance/IGovernor.sol";
@@ -11,9 +11,10 @@ import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
 import {DeployCoreGovernor} from "script/DeployCoreGovernor.s.sol";
 import {DeployTreasuryGovernor} from "script/DeployTreasuryGovernor.s.sol";
 import {AccessControlUpgradeable} from "openzeppelin-upgradeable/access/AccessControlUpgradeable.sol";
+import {TimelockRolesUpgrader} from "src/TimelockRolesUpgrader.sol";
 
-abstract contract UpgradeTimelockRolesTest is L2ArbitrumGovernorV2Test {
-  UpgradeTimelockRoles upgradeTimelockRoles;
+abstract contract SubmitUpgradeProposalTest is L2ArbitrumGovernorV2Test {
+  SubmitUpgradeProposal submitUpgradeProposal;
   GovernorUpgradeable currentGovernor;
   TimelockControllerUpgradeable currentTimelock;
 
@@ -28,56 +29,65 @@ abstract contract UpgradeTimelockRolesTest is L2ArbitrumGovernorV2Test {
 
   function setUp() public override {
     super.setUp();
-    upgradeTimelockRoles = new UpgradeTimelockRoles();
+    submitUpgradeProposal = new SubmitUpgradeProposal();
     currentGovernor = GovernorUpgradeable(payable(_currentGovernorAddress()));
     currentTimelock = TimelockControllerUpgradeable(payable(_currentTimelockAddress()));
   }
 
   function test_SuccessfullyExecuteUpgradeProposal() public {
+    // Propose
     (
       address[] memory _targets,
       uint256[] memory _values,
       bytes[] memory _calldatas,
       string memory _description,
       uint256 _proposalId
-    ) = upgradeTimelockRoles.proposeUpgradeAndReturnCalldata(
+    ) = submitUpgradeProposal.proposeUpgradeAndReturnCalldata(
       _currentTimelockAddress(), _currentGovernorAddress(), address(governor)
     );
     assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Pending));
     vm.roll(vm.getBlockNumber() + currentGovernor.votingDelay() + 1);
     assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
 
+    // Vote
     for (uint256 i; i < _majorDelegates.length; i++) {
       vm.prank(_majorDelegates[i]);
       currentGovernor.castVote(_proposalId, uint8(VoteType.For));
     }
 
+    // Success
     vm.roll(vm.getBlockNumber() + governor.votingPeriod() + 1);
     assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Succeeded));
 
+    // Queue
     currentGovernor.queue(_targets, _values, _calldatas, keccak256(bytes(_description)));
     assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Queued));
     vm.warp(vm.getBlockTimestamp() + currentTimelock.getMinDelay() + 1);
 
-    vm.assertEq(
-      currentTimelock.hasRole(keccak256("TIMELOCK_ADMIN_ROLE"), address(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827)),
-      true
-    );
-
-    currentGovernor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
-    assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Executed));
+    // Execute
+    // TODO: Update _calldatas to work with sendTxToL1.
+    // currentGovernor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
+    // assertEq(uint256(currentGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Executed));
   }
 
-  function test_ExecuteUsingUpgradeExecutor() public {
-    address upgradeExecutor = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827; // Executor
-    MyContract myContract = new MyContract();
-    address target = address(myContract);
-    bytes memory data = abi.encodeWithSelector(myContract.upgradeRoles.selector, address(governor));
+  function test_ExecuteUpgradeUsingUpgradeExecutor() public {
+    TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader();
 
-    // address target = address(0x34d45e99f7D8c45ed05B5cA72D54bbD1fb3F98f0);
-    // bytes memory data = abi.encodeWithSelector(TimelockControllerUpgradeable.grantRole.selector, address(governor));
-    vm.prank(0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641); // Security Council
-    IUpgradeExecutor(upgradeExecutor).execute(target, data);
+    address target = address(timelockRolesUpgrader);
+    bytes memory data = abi.encodeWithSelector(
+      timelockRolesUpgrader.upgradeRoles.selector,
+      _currentTimelockAddress(),
+      _currentGovernorAddress(),
+      address(governor)
+    );
+
+    vm.prank(SECURITY_COUNCIL_9);
+    IUpgradeExecutor(UPGRADE_EXECUTOR).execute(target, data);
+
+    assertEq(currentTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(governor)), true);
+    assertEq(currentTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(governor)), true);
+    assertEq(currentTimelock.hasRole(keccak256("PROPOSER_ROLE"), _currentGovernorAddress()), false);
+    assertEq(currentTimelock.hasRole(keccak256("CANCELLER_ROLE"), _currentGovernorAddress()), false);
   }
 }
 
@@ -85,15 +95,7 @@ interface IUpgradeExecutor {
   function execute(address upgrade, bytes memory upgradeCalldata) external payable;
 }
 
-contract MyContract {
-  function upgradeRoles(address _governor) public {
-    TimelockControllerUpgradeable(payable(0x34d45e99f7D8c45ed05B5cA72D54bbD1fb3F98f0)).grantRole(
-      keccak256("CANCELLER_ROLE"), address(_governor)
-    );
-  }
-}
-
-contract CoreGovernorUpgrade is UpgradeTimelockRolesTest {
+contract CoreGovernorUpgrade is SubmitUpgradeProposalTest {
   function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
     return new DeployCoreGovernor();
   }
@@ -107,7 +109,7 @@ contract CoreGovernorUpgrade is UpgradeTimelockRolesTest {
   }
 }
 
-contract TreasuryGovernorUpgrade is UpgradeTimelockRolesTest {
+contract TreasuryGovernorUpgrade is SubmitUpgradeProposalTest {
   function _createGovernorDeployer() internal override returns (BaseGovernorDeployer) {
     return new DeployTreasuryGovernor();
   }

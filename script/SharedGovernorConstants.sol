@@ -15,6 +15,10 @@ contract SharedGovernorConstants {
   address public constant ARBITRUM_TREASURY_GOVERNOR = 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4;
   address public constant ARBITRUM_TREASURY_GOVERNOR_TIMELOCK = 0xbFc1FECa8B09A5c5D3EFfE7429eBE24b9c09EF58;
 
+  address public constant ARB_SYS = 0x0000000000000000000000000000000000000064;
+  address public constant SECURITY_COUNCIL_9 = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
+  address public constant UPGRADE_EXECUTOR = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827;
+
   // These values match the current production values for both governors. Note that they are expressed in L1 blocks,
   // with an assumed 12 second block time, because on Arbitrum, block.number returns the number of the L1.
   uint48 public constant INITIAL_VOTING_DELAY = 21_600; // 3 days
