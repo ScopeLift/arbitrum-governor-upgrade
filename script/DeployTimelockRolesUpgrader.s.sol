@@ -7,8 +7,7 @@ import {Script} from "forge-std/Script.sol";
 import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 
-// Basic shared infrastructure for all deploy scripts
-contract BaseDeployer is Script, SharedGovernorConstants {
+contract DeployTimelockRolesUpgrader is Script, SharedGovernorConstants {
   uint256 deployerPrivateKey;
 
   function setUp() public {

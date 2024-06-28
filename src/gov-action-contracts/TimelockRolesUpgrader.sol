@@ -46,10 +46,10 @@ contract TimelockRolesUpgrader {
 
     // Check roles were changed
     TimelockControllerUpgradeable timelock = TimelockControllerUpgradeable(payable(_timelock));
-    require(timelock.hasRole(keccak256("PROPOSER_ROLE"), _newGovernor), "Adder role not granted");
-    require(timelock.hasRole(keccak256("CANCELLER_ROLE"), _newGovernor), "Replacer role not granted");
-    require(!timelock.hasRole(keccak256("PROPOSER_ROLE"), _oldGovernor), "Rotator role not granted");
-    require(!timelock.hasRole(keccak256("CANCELLER_ROLE"), _oldGovernor), "Remover role not granted");
+    require(timelock.hasRole(keccak256("PROPOSER_ROLE"), _newGovernor), "PROPOSER_ROLE role not granted");
+    require(timelock.hasRole(keccak256("CANCELLER_ROLE"), _newGovernor), "CANCELLER_ROLE role not granted");
+    require(!timelock.hasRole(keccak256("PROPOSER_ROLE"), _oldGovernor), "PROPOSER_ROLE role not revoked");
+    require(!timelock.hasRole(keccak256("CANCELLER_ROLE"), _oldGovernor), "CANCELLER_ROLE role not revoked");
   }
 
   function _grantRole(address _timelock, address _governor, bytes32 _role) private {
