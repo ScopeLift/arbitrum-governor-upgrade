@@ -44,7 +44,7 @@ contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateP
     description = "Upgrade timelock roles";
 
     targets[0] = ARB_SYS;
-    bytes memory proposalCalldata = createProposal(description, _timelockRolesUpgrader, minDelay);
+    bytes memory proposalCalldata = _createProposal(description, _timelockRolesUpgrader, minDelay);
     calldatas[0] = proposalCalldata;
 
     vm.startBroadcast(PROPOSER);
