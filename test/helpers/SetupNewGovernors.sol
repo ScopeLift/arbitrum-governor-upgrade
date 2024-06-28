@@ -71,48 +71,39 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
 
 contract MockArbSys is SharedGovernorConstants, Test {
   function sendTxToL1(address _l1Target, bytes calldata _data) external {
-    // (address _l1Timelock, bytes memory _l1TimelockCalldata) = abi.decode(_data[:4], (address, bytes));
-
     (
       address _retryableTicketMagic,
-      uint256 _ignored,
+      /*uint256 _ignored*/
+      ,
       bytes memory _retryableData,
-      bytes32 _predecessor,
-      bytes32 _description,
-      uint256 _minDelay
+      /*bytes32 _predecessor*/
+      ,
+      /*bytes32 _description*/
+      ,
+      /*uint256 _minDelay*/
     ) = abi.decode(_data[4:], (address, uint256, bytes, bytes32, bytes32, uint256));
-    console2.log("retryableData");
-    console2.logBytes(_retryableData);
-    (
-      address _arbOneDelayedInbox,
-      address _upgradeExecutor,
-      uint256 _value,
-      uint256 _maxGas,
-      uint256 _maxFeePerGas,
-      bytes memory _upgradeExecutorCallData
-    ) = this.decodeRetryableData(_retryableData);
-    // (address _oneOffUpgradeAddress, bytes memory _upgradeExecutorCallData) =
-    // this.decodeRetryableData(_retryableData);
-    vm.prank(SECURITY_COUNCIL_9);
-    address(UPGRADE_EXECUTOR).call(_upgradeExecutorCallData);
-  }
 
-  function decodeRetryableData(bytes calldata _retryableData)
-    public
-    returns (address, address, uint256, uint256, uint256, bytes memory)
-  {
+    assertEq(_l1Target, L1_TIMELOCK);
+    assertEq(_retryableTicketMagic, RETRYABLE_TICKET_MAGIC);
+
     (
       address _arbOneDelayedInbox,
       address _upgradeExecutor,
-      uint256 _value,
-      uint256 _maxGas,
-      uint256 _maxFeePerGas,
+      /*uint256 _value*/
+      ,
+      /*uint256 _maxGas*/
+      ,
+      /*uint256 _maxFeePerGas*/
+      ,
       bytes memory _upgradeExecutorCallData
     ) = abi.decode(_retryableData, (address, address, uint256, uint256, uint256, bytes));
-    // (address _oneOffUpgradeAddress, bytes memory _upgradeExecutorCallData) =
-    //   abi.decode(_retryableData, (address, bytes));
-    // return (_oneOffUpgradeAddress, _upgradeExecutorCallData);
-    return (_arbOneDelayedInbox, _upgradeExecutor, _value, _maxGas, _maxFeePerGas, _upgradeExecutorCallData);
+
+    assertEq(_arbOneDelayedInbox, ARB_ONE_DELAYED_INBOX);
+    assertEq(_upgradeExecutor, UPGRADE_EXECUTOR);
+
+    vm.prank(SECURITY_COUNCIL_9);
+    (bool success, /*bytes memory data*/ ) = _upgradeExecutor.call(_upgradeExecutorCallData);
+    assertEq(success, true);
   }
 }
 
