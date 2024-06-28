@@ -7,7 +7,7 @@ import {Script} from "forge-std/Script.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
 import {AccessControlUpgradeable} from "openzeppelin-upgradeable/access/AccessControlUpgradeable.sol";
-import {CreateProposalCalldata} from "src/helpers/CreateProposalCalldata.sol";
+import {CreateProposalCalldata} from "script/helpers/CreateProposalCalldata.sol";
 
 contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateProposalCalldata {
   // TODO: Update `PROPOSER` to script msg.sender who will submit the proposal.
