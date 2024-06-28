@@ -18,6 +18,15 @@ import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
 
 contract SubmitUpgradeProposalTest is SetupNewGovernors {
   function test_SuccessfullyExecuteUpgradeProposal() public {
+    TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
+      ARBITRUM_CORE_GOVERNOR_TIMELOCK,
+      ARBITRUM_CORE_GOVERNOR,
+      address(newCoreGovernor),
+      ARBITRUM_TREASURY_GOVERNOR_TIMELOCK,
+      ARBITRUM_TREASURY_GOVERNOR,
+      address(newTreasuryGovernor)
+    );
+
     // Propose
     (
       address[] memory _targets,
@@ -25,9 +34,7 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
       bytes[] memory _calldatas,
       string memory _description,
       uint256 _proposalId
-    ) = submitUpgradeProposalScript.run(
-      ARBITRUM_CORE_GOVERNOR //maybe also the treasury governor to use in createProposal
-    );
+    ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader));
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Pending));
     vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingDelay() + 1);
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
@@ -50,23 +57,6 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
     // Execute
     currentCoreGovernor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Executed));
-  }
-
-  function test_ExecuteUpgradeUsingUpgradeExecutor() public {
-    TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
-      ARBITRUM_CORE_GOVERNOR_TIMELOCK,
-      ARBITRUM_CORE_GOVERNOR,
-      address(newCoreGovernor),
-      ARBITRUM_TREASURY_GOVERNOR_TIMELOCK,
-      ARBITRUM_TREASURY_GOVERNOR,
-      address(newTreasuryGovernor)
-    );
-
-    address target = address(timelockRolesUpgrader);
-    bytes memory data = abi.encodeWithSelector(timelockRolesUpgrader.perform.selector);
-
-    vm.prank(SECURITY_COUNCIL_9);
-    IUpgradeExecutor(UPGRADE_EXECUTOR).execute(target, data);
 
     assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newCoreGovernor)), true);
     assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newCoreGovernor)), true);
