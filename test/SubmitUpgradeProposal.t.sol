@@ -18,6 +18,16 @@ import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
 
 contract SubmitUpgradeProposalTest is SetupNewGovernors {
   function test_SuccessfullyExecuteUpgradeProposal() public {
+    TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
+      ARBITRUM_CORE_GOVERNOR_TIMELOCK,
+      ARBITRUM_CORE_GOVERNOR,
+      address(newCoreGovernor),
+      ARBITRUM_TREASURY_GOVERNOR_TIMELOCK,
+      ARBITRUM_TREASURY_GOVERNOR,
+      address(newTreasuryGovernor)
+    );
+    console2.log("TimelockRolesUpgrader address: %s", address(timelockRolesUpgrader));
+
     // Propose
     (
       address[] memory _targets,
@@ -25,9 +35,7 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
       bytes[] memory _calldatas,
       string memory _description,
       uint256 _proposalId
-    ) = submitUpgradeProposalScript.run(
-      ARBITRUM_CORE_GOVERNOR //maybe also the treasury governor to use in createProposal
-    );
+    ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader));
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Pending));
     vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingDelay() + 1);
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
@@ -50,6 +58,11 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
     // Execute
     currentCoreGovernor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Executed));
+
+    assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newCoreGovernor)), true);
+    // assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newCoreGovernor)), true);
+    // assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), ARBITRUM_CORE_GOVERNOR), false);
+    // assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), ARBITRUM_CORE_GOVERNOR), false);
   }
 
   function test_ExecuteUpgradeUsingUpgradeExecutor() public {

@@ -62,12 +62,60 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
     currentTreasuryTimelock = TimelockControllerUpgradeable(payable(ARBITRUM_TREASURY_GOVERNOR_TIMELOCK));
 
     // Deploy a mock ArbSys contract at ARB_SYS
+    vm.allowCheatcodes(address(ARB_SYS));
     MockArbSys mockArbSys = new MockArbSys();
     bytes memory code = address(mockArbSys).code;
     vm.etch(ARB_SYS, code);
   }
 }
 
-contract MockArbSys {
-  function sendTxToL1(address _l1Target, bytes calldata _data) external {}
+contract MockArbSys is SharedGovernorConstants, Test {
+  function sendTxToL1(address _l1Target, bytes calldata _data) external {
+    // (address _l1Timelock, bytes memory _l1TimelockCalldata) = abi.decode(_data[:4], (address, bytes));
+
+    (
+      address _retryableTicketMagic,
+      uint256 _ignored,
+      bytes memory _retryableData,
+      bytes32 _predecessor,
+      bytes32 _description,
+      uint256 _minDelay
+    ) = abi.decode(_data[4:], (address, uint256, bytes, bytes32, bytes32, uint256));
+    console2.log("retryableData");
+    console2.logBytes(_retryableData);
+    (
+      address _arbOneDelayedInbox,
+      address _upgradeExecutor,
+      uint256 _value,
+      uint256 _maxGas,
+      uint256 _maxFeePerGas,
+      bytes memory _upgradeExecutorCallData
+    ) = this.decodeRetryableData(_retryableData);
+    // (address _oneOffUpgradeAddress, bytes memory _upgradeExecutorCallData) =
+    // this.decodeRetryableData(_retryableData);
+    vm.prank(SECURITY_COUNCIL_9);
+    address(UPGRADE_EXECUTOR).call(_upgradeExecutorCallData);
+  }
+
+  function decodeRetryableData(bytes calldata _retryableData)
+    public
+    returns (address, address, uint256, uint256, uint256, bytes memory)
+  {
+    (
+      address _arbOneDelayedInbox,
+      address _upgradeExecutor,
+      uint256 _value,
+      uint256 _maxGas,
+      uint256 _maxFeePerGas,
+      bytes memory _upgradeExecutorCallData
+    ) = abi.decode(_retryableData, (address, address, uint256, uint256, uint256, bytes));
+    // (address _oneOffUpgradeAddress, bytes memory _upgradeExecutorCallData) =
+    //   abi.decode(_retryableData, (address, bytes));
+    // return (_oneOffUpgradeAddress, _upgradeExecutorCallData);
+    return (_arbOneDelayedInbox, _upgradeExecutor, _value, _maxGas, _maxFeePerGas, _upgradeExecutorCallData);
+  }
+}
+
+interface IUpgradeExecutor {
+  function execute(address to, bytes calldata data) external payable;
 }
