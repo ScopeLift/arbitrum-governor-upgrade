@@ -25,10 +25,10 @@ contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateP
       uint256 _proposalId
     )
   {
-    return proposeUpgradeAndReturnCalldata(_timelockRolesUpgrader);
+    return proposeUpgrade(_timelockRolesUpgrader);
   }
 
-  function proposeUpgradeAndReturnCalldata(address _timelockRolesUpgrader)
+  function proposeUpgrade(address _timelockRolesUpgrader)
     internal
     returns (
       address[] memory targets,
