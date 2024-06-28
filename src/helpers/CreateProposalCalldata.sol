@@ -6,7 +6,7 @@ import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 contract CreateProposalCalldata is SharedGovernorConstants {
   function createProposal(string memory _proposalDescription, address _oneOffUpgradeAddr, uint256 _minDelay)
     internal
-    view
+    pure
     returns (bytes memory)
   {
     address retryableTicketMagic = RETRYABLE_TICKET_MAGIC;
