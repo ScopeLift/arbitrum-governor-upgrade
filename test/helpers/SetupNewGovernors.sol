@@ -69,6 +69,11 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
   }
 }
 
+/// @dev Here we mock ArbSys, the contract that the timelock uses to make an L2 to L1 call. Normal call flow would
+/// then see the call flow to ArbOne Outbox, to L1 timelock, to L1 ArbOne Inbox, to L2 Retryable buffer, to L2 Upgrade
+/// Executor. Here, we assume this L1 call flow occurs. We make loose assertions about what calldata at each of these
+/// steps looks like, and we finally arrive at the decoded calldata to pass to Upgrade Executor. Everything from ArbSys
+/// to UpgradeExecutor is "fake" here, while preserving some loose confidence.
 contract MockArbSys is SharedGovernorConstants, Test {
   function sendTxToL1(address _l1Target, bytes calldata _data) external {
     (
