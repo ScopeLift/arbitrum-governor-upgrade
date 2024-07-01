@@ -27,10 +27,16 @@ import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
 // Test Suite Base - Shared values, setup, helpers, and virtual methods needed by concrete test contracts
 // ----------------------------------------------------------------------------------------------------------------- //
 
+struct Proposal {
+  address[] targets;
+  uint256[] values;
+  bytes[] calldatas;
+  string description;
+}
+
 abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
-  /// @dev Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal, so we
-  /// hardcode the address below
-  address constant PROXY_ADMIN_CONTRACT = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961; // Proxy Admin Contract Address
+  /// @dev Proxy admin contract deployed in construction of TransparentUpgradeableProxy
+  address PROXY_ADMIN_CONTRACT;
   L2ArbitrumGovernorV2 governor;
   // BaseGovernorDeployer proxyDeployer;
   ERC20VotesUpgradeable arbitrumToken;
@@ -51,6 +57,8 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   function _getMajorDelegate(uint256 _actorSeed) public view returns (address) {
     return _majorDelegates[_actorSeed % _majorDelegates.length];
   }
+
+  function _proposeRealisticProposal(uint256 _randomSeed) internal virtual returns (uint256 proposalId);
 
   function _proposeTestProposal()
     internal
@@ -108,6 +116,54 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
     // Execute
     currentCoreGovernor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
     assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Executed));
+  }
+}
+
+abstract contract CoreGovernorTest is L2ArbitrumGovernorV2Test {
+  function setUp() public virtual override {
+    /// Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we
+    /// hardcode the address
+    PROXY_ADMIN_CONTRACT = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961;
+    super.setUp();
+  }
+
+  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
+    return newCoreGovernor;
+  }
+
+  function _proposeRealisticProposal(uint256 _randomSeed) internal override returns (uint256 proposalId) {
+    Proposal[] memory _proposals = new Proposal[](2);
+    uint256 _switch = _randomSeed % _proposals.length;
+    if (_switch == 0) {
+      // one type of realistic proposal would be to use ArbSys to do something via L2 UpgradeExecutor
+    } else if (_switch == 1) {
+      // another type of realistic proposal would be to use ArbSys to do something on L1 UpgradeExecutor
+    }
+    return 0;
+  }
+}
+
+abstract contract TreasuryGovernorTest is L2ArbitrumGovernorV2Test {
+  function setUp() public virtual override {
+    // Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we hardcode
+    // the address
+    PROXY_ADMIN_CONTRACT = 0xD3fe9b9cc02F23B3e3b43CF80700d8C7cf178339;
+    super.setUp();
+  }
+
+  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
+    return newTreasuryGovernor;
+  }
+
+  function _proposeRealisticProposal(uint256 _randomSeed) internal override returns (uint256 proposalId) {
+    Proposal[] memory _proposals = new Proposal[](2);
+    uint256 _switch = _randomSeed % _proposals.length;
+    if (_switch == 0) {
+      // one type of realistic proposal would be to use ArbSys to do something via L2 UpgradeExecutor
+    } else if (_switch == 1) {
+      // another type of realistic proposal would be to use ArbSys to do something on L1 UpgradeExecutor
+    }
+    return 0;
   }
 }
 
@@ -190,12 +246,6 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
 }
 
 abstract contract Quorum is L2ArbitrumGovernorV2Test {
-  function setUp() public override {
-    super.setUp();
-    _setQuorumNumerator(3000); // 30% quorum
-    vm.roll(vm.getBlockNumber() + 1);
-  }
-
   function _setQuorumNumerator(uint256 _numerator) internal {
     vm.prank(address(governor));
     governor.updateQuorumNumerator(_numerator);
@@ -438,10 +488,6 @@ abstract contract CastVoteOnTreasuryGovernor is L2ArbitrumGovernorV2Test {
 }
 
 abstract contract Queue is L2ArbitrumGovernorV2Test {
-  function setUp() public override {
-    super.setUp();
-  }
-
   function test_QueuesAWinningProposalAfterUpgrade() public {
     _skipToPostUpgrade();
     (
@@ -551,86 +597,86 @@ contract MockOneOffUpgrader {
 // Concrete Test Contracts - Inherit from each abstract test and implement concrete methods for Core & Treasury case
 // ----------------------------------------------------------------------------------------------------------------- //
 
-contract CoreGovernorInitialize is Initialize {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newCoreGovernor;
+contract CoreGovernorInitialize is CoreGovernorTest, Initialize {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+    super.setUp();
   }
 }
 
-contract CoreGovernorRelay is Relay {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newCoreGovernor;
+contract CoreGovernorRelay is CoreGovernorTest, Relay {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+    super.setUp();
   }
 }
 
-contract CoreGovernorQuorum is Quorum {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newCoreGovernor;
+contract CoreGovernorQuorum is CoreGovernorTest, Quorum {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+    super.setUp();
   }
 }
 
-contract CoreGovernorPropose is Propose {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newCoreGovernor;
+contract CoreGovernorPropose is CoreGovernorTest, Propose {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+    super.setUp();
   }
 }
 
-contract CoreGovernorCastVote is CastVoteOnCoreGovernor {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newCoreGovernor;
+contract CoreGovernorCastVote is CoreGovernorTest, CastVoteOnCoreGovernor {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+    super.setUp();
   }
 }
 
-contract CoverGovernorQueue is Queue {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newCoreGovernor;
+contract CoverGovernorQueue is CoreGovernorTest, Queue {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+    super.setUp();
   }
 }
 
-contract CoreGovernorCancel is Cancel {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newCoreGovernor;
+contract CoreGovernorCancel is CoreGovernorTest, Cancel {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+    super.setUp();
   }
 }
 
-contract TreasuryGovernorInitialize is Initialize {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newTreasuryGovernor;
+contract TreasuryGovernorInitialize is TreasuryGovernorTest, Initialize {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+    super.setUp();
   }
 }
 
-contract TreasuryGovernorRelay is Relay {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newTreasuryGovernor;
+contract TreasuryGovernorRelay is TreasuryGovernorTest, Relay {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+    super.setUp();
   }
 }
 
-contract TreasuryGovernorQuorum is Quorum {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newTreasuryGovernor;
+contract TreasuryGovernorQuorum is TreasuryGovernorTest, Quorum {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+    super.setUp();
   }
 }
 
-contract TreasuryGovernorPropose is Propose {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newTreasuryGovernor;
+contract TreasuryGovernorPropose is TreasuryGovernorTest, Propose {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+    super.setUp();
   }
 }
 
-contract TreasuryGovernorVote is CastVoteOnTreasuryGovernor {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newTreasuryGovernor;
+contract TreasuryGovernorVote is TreasuryGovernorTest, CastVoteOnTreasuryGovernor {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+    super.setUp();
   }
 }
 
-contract TreasuryGovernorQueue is Queue {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newTreasuryGovernor;
+contract TreasuryGovernorQueue is TreasuryGovernorTest, Queue {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+    super.setUp();
   }
 }
 
-contract TreasuryGovernorCancel is Cancel {
-  function _governor() internal view override returns (L2ArbitrumGovernorV2) {
-    return newTreasuryGovernor;
+contract TreasuryGovernorCancel is TreasuryGovernorTest, Cancel {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+    super.setUp();
   }
 }
