@@ -15,7 +15,10 @@ contract SharedGovernorConstants {
   address public constant ARBITRUM_TREASURY_GOVERNOR = 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4;
   address public constant ARBITRUM_TREASURY_GOVERNOR_TIMELOCK = 0xbFc1FECa8B09A5c5D3EFfE7429eBE24b9c09EF58;
 
+  address public constant DAO_TREASURY = 0xF3FC178157fb3c87548bAA86F9d24BA38E649B58;
+
   address public constant L1_TIMELOCK = 0xE6841D92B0C345144506576eC13ECf5103aC7f49;
+  uint256 public constant L1_TIMELOCK_MIN_DELAY = 259_200; // TODO: Make sure this is up to date.
   address public constant ARB_SYS = 0x0000000000000000000000000000000000000064;
   address public constant SECURITY_COUNCIL_9 = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
   address public constant UPGRADE_EXECUTOR = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827;
@@ -33,6 +36,23 @@ contract SharedGovernorConstants {
   uint256 public constant INITIAL_PROPOSAL_THRESHOLD = 1_000_000_000_000_000_000_000_000;
 
   address[] public _majorDelegates;
+
+  enum ProposalState {
+    Pending,
+    Active,
+    Canceled,
+    Defeated,
+    Succeeded,
+    Queued,
+    Expired,
+    Executed
+  }
+
+  enum VoteType {
+    Against,
+    For,
+    Abstain
+  }
 
   constructor() {
     _majorDelegates = new address[](18);
