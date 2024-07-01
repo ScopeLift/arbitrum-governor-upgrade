@@ -29,12 +29,6 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
   L2ArbitrumGovernorV2 newCoreGovernor;
   L2ArbitrumGovernorV2 newTreasuryGovernor;
 
-  enum VoteType {
-    Against,
-    For,
-    Abstain
-  }
-
   function setUp() public virtual {
     vm.createSelectFork(
       vm.envOr("ARBITRUM_ONE_RPC_URL", string("Please set ARBITRUM_ONE_RPC_URL in your .env file")), FORK_BLOCK

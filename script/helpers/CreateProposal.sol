@@ -3,11 +3,39 @@ pragma solidity 0.8.26;
 
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 
-contract CreateProposalCalldata is SharedGovernorConstants {
-  function _createProposal(string memory _proposalDescription, address _oneOffUpgradeAddr, uint256 _minDelay)
-    internal
+contract CreateProposal is SharedGovernorConstants {
+  function createCoreProposal(string memory _proposalDescription, address _oneOffUpgradeAddr, uint256 _minDelay)
+    public
     pure
-    returns (bytes memory)
+    returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+  {
+    targets = new address[](1);
+    values = new uint256[](1);
+    calldatas = new bytes[](1);
+
+    targets[0] = ARB_SYS;
+    calldatas[0] = createProposalCalldata(_proposalDescription, _oneOffUpgradeAddr, _minDelay);
+  }
+
+  function createTreasuryProposalForSingleTransfer(address _token, address _to, uint256 _amount)
+    public
+    pure
+    returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+  {
+    targets = new address[](1);
+    values = new uint256[](1);
+    calldatas = new bytes[](1);
+
+    targets[0] = DAO_TREASURY;
+    bytes memory transferCalldata =
+      abi.encodeWithSelector(IFixedDelegateErc20Wallet.transfer.selector, _token, _to, _amount);
+    calldatas[0] = transferCalldata;
+  }
+
+  function createProposalCalldata(string memory _proposalDescription, address _oneOffUpgradeAddr, uint256 _minDelay)
+    public
+    pure
+    returns (bytes memory proposalCalldata)
   {
     address retryableTicketMagic = RETRYABLE_TICKET_MAGIC;
 
@@ -41,12 +69,11 @@ contract CreateProposalCalldata is SharedGovernorConstants {
 
     // the data provided to the L2 Arbitrum Governor in the propose() method
     // the target will be the ArbSys address on Arb One
-    bytes memory proposalCalldata = abi.encodeWithSelector(
+    proposalCalldata = abi.encodeWithSelector(
       IArbSys.sendTxToL1.selector, // the execution of the proposal will create an L2->L1 cross chain message
       L1_TIMELOCK, // the target of the cross chain message is the L1 timelock
       l1TimelockData // call the l1 timelock with the data created in the previous step
     );
-    return proposalCalldata;
   }
 }
 
@@ -81,4 +108,8 @@ interface IL2ArbitrumGovernor {
 
 interface ITimelockRolesUpgrader {
   function perform() external;
+}
+
+interface IFixedDelegateErc20Wallet {
+  function transfer(address _token, address _to, uint256 _amount) external returns (bool);
 }
