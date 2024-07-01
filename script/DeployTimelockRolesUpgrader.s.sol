@@ -12,7 +12,7 @@ contract DeployTimelockRolesUpgrader is BaseDeployer, SharedGovernorConstants {
     public
     returns (TimelockRolesUpgrader timelockRolesUpgrader)
   {
-    vm.startBroadcast(deployerPrivateKey);
+    vm.startBroadcast();
     timelockRolesUpgrader = new TimelockRolesUpgrader(
       ARBITRUM_CORE_GOVERNOR_TIMELOCK,
       ARBITRUM_CORE_GOVERNOR,

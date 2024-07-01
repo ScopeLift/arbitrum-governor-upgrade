@@ -2,20 +2,24 @@
 pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
+import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
 import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
+import {DeployImplementation} from "script/DeployImplementation.s.sol";
 import {DeployCoreGovernor} from "script/DeployCoreGovernor.s.sol";
 import {DeployTreasuryGovernor} from "script/DeployTreasuryGovernor.s.sol";
-import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
-import {DeployImplementation} from "script/DeployImplementation.s.sol";
+import {DeployTimelockRolesUpgrader} from "script/DeployTimelockRolesUpgrader.s.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
+import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
+import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
 
 abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
   uint256 constant FORK_BLOCK = 220_819_857; // Arbitrary recent block
 
   SubmitUpgradeProposalScript submitUpgradeProposalScript;
+  DeployTimelockRolesUpgrader deployTimelockRolesUpgrader;
+  TimelockRolesUpgrader timelockRolesUpgrader;
   BaseGovernorDeployer proxyCoreGovernorDeployer;
   BaseGovernorDeployer proxyTreasuryGovernorDeployer;
 
@@ -33,7 +37,6 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
     vm.createSelectFork(
       vm.envOr("ARBITRUM_ONE_RPC_URL", string("Please set ARBITRUM_ONE_RPC_URL in your .env file")), FORK_BLOCK
     );
-    submitUpgradeProposalScript = new SubmitUpgradeProposalScript();
 
     // Deploy Governor implementation contract
     DeployImplementation _implementationDeployer = new DeployImplementation();
@@ -60,6 +63,12 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
     MockArbSys mockArbSys = new MockArbSys();
     bytes memory code = address(mockArbSys).code;
     vm.etch(ARB_SYS, code);
+
+    // Prepare the script to submit upgrade proposal
+    submitUpgradeProposalScript = new SubmitUpgradeProposalScript();
+
+    deployTimelockRolesUpgrader = new DeployTimelockRolesUpgrader();
+    timelockRolesUpgrader = deployTimelockRolesUpgrader.run(address(newCoreGovernor), address(newTreasuryGovernor));
   }
 }
 
