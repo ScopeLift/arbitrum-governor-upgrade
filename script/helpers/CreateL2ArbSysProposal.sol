@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 
-contract CreateProposal is SharedGovernorConstants {
+contract CreateL2ArbSysProposal is SharedGovernorConstants {
   function createCoreProposal(string memory _proposalDescription, address _oneOffUpgradeAddr, uint256 _minDelay)
     public
     pure

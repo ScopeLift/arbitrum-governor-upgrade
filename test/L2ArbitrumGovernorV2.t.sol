@@ -2,12 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
-import {DeployImplementation} from "script/DeployImplementation.s.sol";
-import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
-import {DeployCoreGovernor} from "script/DeployCoreGovernor.s.sol";
-import {DeployTreasuryGovernor} from "script/DeployTreasuryGovernor.s.sol";
-import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
 import {Initializable} from "openzeppelin-upgradeable/proxy/utils/Initializable.sol";
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
@@ -15,13 +9,17 @@ import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/Transp
 import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 import {ERC20VotesUpgradeable} from "openzeppelin-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import {IGovernor} from "openzeppelin/governance/IGovernor.sol";
-import {CreateProposal} from "script/helpers/CreateProposal.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
-import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
+import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
+import {DeployImplementation} from "script/DeployImplementation.s.sol";
+import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
+import {DeployCoreGovernor} from "script/DeployCoreGovernor.s.sol";
+import {DeployTreasuryGovernor} from "script/DeployTreasuryGovernor.s.sol";
+import {CreateL2ArbSysProposal} from "script/helpers/CreateL2ArbSysProposal.sol";
 import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
+import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
+import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
 import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
-
-// import {ProposalBuilder} from "test/helpers/ProposalBuilder.sol";
 
 // ----------------------------------------------------------------------------------------------------------------- //
 // Test Suite Base - Shared values, setup, helpers, and virtual methods needed by concrete test contracts
@@ -32,6 +30,7 @@ struct Proposal {
   uint256[] values;
   bytes[] calldatas;
   string description;
+  uint256 proposalId;
 }
 
 abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
@@ -42,11 +41,11 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   BaseGovernorDeployer proxyDeployer;
   ERC20VotesUpgradeable arbitrumToken;
   ERC20Mock mockToken;
-  CreateProposal createProposalHelper;
+  CreateL2ArbSysProposal createL2ArbSysProposal;
 
   function setUp() public virtual override {
     super.setUp();
-    createProposalHelper = new CreateProposal();
+    createL2ArbSysProposal = new CreateL2ArbSysProposal();
     arbitrumToken = ERC20VotesUpgradeable(ARB_TOKEN_ADDRESS);
     mockToken = new ERC20Mock();
   }
@@ -55,16 +54,7 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
     return _majorDelegates[_actorSeed % _majorDelegates.length];
   }
 
-  function _proposeRealisticProposal(uint256 _randomSeed)
-    internal
-    virtual
-    returns (
-      address[] memory _targets,
-      uint256[] memory _values,
-      bytes[] memory _calldatas,
-      string memory _description,
-      uint256 _proposalId
-    );
+  function _proposeRealisticProposal(uint256 _randomSeed) internal virtual returns (Proposal memory);
 
   function _proposeTestProposal()
     internal
@@ -136,24 +126,21 @@ abstract contract CoreGovernorTest is L2ArbitrumGovernorV2Test {
     proxyDeployer = proxyCoreGovernorDeployer;
   }
 
-  function _proposeRealisticProposal(uint256 _randomSeed)
-    internal
-    override
-    returns (
-      address[] memory _targets,
-      uint256[] memory _values,
-      bytes[] memory _calldatas,
-      string memory _description,
-      uint256 _proposalId
-    )
-  {
-    Proposal[] memory _proposals = new Proposal[](2);
-    uint256 _switch = _randomSeed % _proposals.length;
-    if (_switch == 0) {
-      // one type of realistic proposal would be to use ArbSys to do something via L2 UpgradeExecutor
-    } else if (_switch == 1) {
-      // another type of realistic proposal would be to use ArbSys to do something on L1 UpgradeExecutor
-    }
+  function _proposeRealisticProposal(uint256 /*_randomSeed*/ ) internal override returns (Proposal memory) {
+    // Proposal[] memory _proposals = new Proposal[](2);
+    // uint256 _switch = _randomSeed % _proposals.length;
+    // if (_switch == 0) {
+    // one type of realistic proposal would be to use ArbSys to do something via L2 UpgradeExecutor
+    MockOneOffUpgrader _oneOffUpgrader = new MockOneOffUpgrader();
+    vm.prank(_getMajorDelegate(1));
+
+    createL2ArbSysProposal.createCoreProposal(
+      "Realistic core proposal", address(_oneOffUpgrader), L1_TIMELOCK_MIN_DELAY
+    );
+    _proposalId = governor.propose(_targets, _values, _calldatas, "Realistic core proposal");
+    // } else if (_switch == 1) {
+    //   // another type of realistic proposal would be to use ArbSys to do something on L1 UpgradeExecutor
+    // }
   }
 }
 
@@ -168,24 +155,33 @@ abstract contract TreasuryGovernorTest is L2ArbitrumGovernorV2Test {
     proxyDeployer = proxyTreasuryGovernorDeployer;
   }
 
-  function _proposeRealisticProposal(uint256 _randomSeed)
-    internal
-    override
-    returns (
-      address[] memory _targets,
-      uint256[] memory _values,
-      bytes[] memory _calldatas,
-      string memory _description,
-      uint256 _proposalId
-    )
-  {
+  function _proposeRealisticProposal(uint256 _randomSeed) internal override returns (Proposal memory) {
     Proposal[] memory _proposals = new Proposal[](2);
-    uint256 _switch = _randomSeed % _proposals.length;
-    if (_switch == 0) {
-      // one type of realistic proposal would be to use ArbSys to do something via L2 UpgradeExecutor
-    } else if (_switch == 1) {
-      // another type of realistic proposal would be to use ArbSys to do something on L1 UpgradeExecutor
-    }
+    _proposals[0] =
+      createL2ArbSysProposal.createTreasuryProposalForSingleTransfer(ARB_TOKEN_ADDRESS, address(0x1), 1_000_000 ether);
+    _proposals[1] = createL2ArbSysProposal.createTreasuryProposalForSingleTransfer(
+      ARB_TOKEN_ADDRESS, address(0x544cBe6698E2e3b676C76097305bBa588dEfB13A), 1_900_000_000_000_000_000_000_000
+    );
+    return _proposals[_randomSeed % _proposals.length];
+    // )
+    // uint256 _switch = _randomSeed % _proposals.length;
+    // if (_switch == 0) {
+    //   _description = "Realistic treasury proposal";
+    //   (_targets, _values, _calldatas) =
+    //     createL2ArbSysProposal.createTreasuryProposalForSingleTransfer(ARB_TOKEN_ADDRESS, address(0x1), 1_000_000
+    // ether);
+    //   vm.prank(_getMajorDelegate(1));
+    //   _proposalId = governor.propose(_targets, _values, _calldatas, _description);
+    // } else if (_switch == 1) {
+    //   //
+    // https://www.tally.xyz/gov/arbitrum/proposal/79183200449169085571205208154003416944507585311666453826890708127615057369177
+    //   _description = "Realistic treasury proposal";
+    //   (_targets, _values, _calldatas) = createL2ArbSysProposal.createTreasuryProposalForSingleTransfer(
+    //     ARB_TOKEN_ADDRESS, address(0x544cBe6698E2e3b676C76097305bBa588dEfB13A), 1_900_000_000_000_000_000_000_000
+    //   );
+    //   vm.prank(_getMajorDelegate(1));
+    //   _proposalId = governor.propose(_targets, _values, _calldatas, _description);
+    // }
   }
 }
 
@@ -376,7 +372,7 @@ abstract contract Propose is L2ArbitrumGovernorV2Test {
     vm.assume(_actor != PROXY_ADMIN_CONTRACT);
 
     (address[] memory _targets, uint256[] memory _values, bytes[] memory _calldatas) =
-      createProposalHelper.createCoreProposal(_description, address(_oneOffUpgrader), L1_TIMELOCK_MIN_DELAY);
+      createL2ArbSysProposal.createCoreProposal(_description, address(_oneOffUpgrader), L1_TIMELOCK_MIN_DELAY);
 
     vm.startPrank(_actor);
     vm.expectRevert(
@@ -394,7 +390,7 @@ abstract contract Propose is L2ArbitrumGovernorV2Test {
     string memory _description
   ) public {
     (address[] memory _targets, uint256[] memory _values, bytes[] memory _calldatas) =
-      createProposalHelper.createCoreProposal(_description, address(_oneOffUpgrader), L1_TIMELOCK_MIN_DELAY);
+      createL2ArbSysProposal.createCoreProposal(_description, address(_oneOffUpgrader), L1_TIMELOCK_MIN_DELAY);
     uint256 _proposalId = governor.hashProposal(_targets, _values, _calldatas, keccak256(bytes(_description)));
 
     vm.startPrank(_getMajorDelegate(_actorSeed));
@@ -407,25 +403,20 @@ abstract contract Propose is L2ArbitrumGovernorV2Test {
   }
 }
 
-abstract contract CastVoteOnCoreGovernor is L2ArbitrumGovernorV2Test {
-  function _proposeACoreProposal(uint256 _actorSeed, address _oneOffUpgrader, string memory _description)
-    internal
-    returns (uint256 _proposalId)
-  {
-    (address[] memory _targets, uint256[] memory _values, bytes[] memory _calldatas) =
-      createProposalHelper.createCoreProposal(_description, _oneOffUpgrader, L1_TIMELOCK_MIN_DELAY);
-
-    vm.startPrank(_getMajorDelegate(_actorSeed));
-    _proposalId = governor.propose(_targets, _values, _calldatas, _description);
-    vm.stopPrank();
-  }
-
-  function testFuzz_ProposalVoteSuccess(
-    uint256 _actorSeed,
-    MockOneOffUpgrader _oneOffUpgrader,
-    string memory _description
-  ) public {
-    uint256 _proposalId = _proposeACoreProposal(_actorSeed, address(_oneOffUpgrader), _description);
+abstract contract CastVote is L2ArbitrumGovernorV2Test {
+  function testFuzz_ProposalVoteSuccess(uint256 _randomSeed) public {
+    (
+      /* address[] memory targets */
+      ,
+      /* uint256[] memory values */
+      ,
+      /* bytes[] memory calldatas */
+      ,
+      /* string memory description */
+      ,
+      uint256 _proposalId
+    ) = _proposeRealisticProposal(_randomSeed);
+    vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
 
     vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
     assertEq(uint256(governor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
@@ -440,60 +431,18 @@ abstract contract CastVoteOnCoreGovernor is L2ArbitrumGovernorV2Test {
     vm.assertEq(uint256(governor.state(_proposalId)), uint256(ProposalState.Succeeded));
   }
 
-  function testFuzz_ProposalVoteDefeat(
-    uint256 _actorSeed,
-    MockOneOffUpgrader _oneOffUpgrader,
-    string memory _description
-  ) public {
-    uint256 _proposalId = _proposeACoreProposal(_actorSeed, address(_oneOffUpgrader), _description);
-
-    vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-    assertEq(uint256(governor.state(_proposalId)), uint256(ProposalState.Active));
-
-    // Vote Against
-    for (uint256 i; i < _majorDelegates.length; i++) {
-      vm.prank(_majorDelegates[i]);
-      governor.castVote(_proposalId, uint8(VoteType.Against));
-    }
-
-    vm.roll(vm.getBlockNumber() + governor.votingPeriod() + 1);
-    vm.assertEq(uint256(governor.state(_proposalId)), uint256(ProposalState.Defeated));
-  }
-}
-
-abstract contract CastVoteOnTreasuryGovernor is L2ArbitrumGovernorV2Test {
-  function _proposeATreasuryProposal(uint256 _actorSeed, address _to, uint256 _amount)
-    internal
-    returns (uint256 _proposalId)
-  {
-    _amount = bound(_amount, 0, arbitrumToken.balanceOf(DAO_TREASURY));
-    string memory _description = "Transfer to random address";
-    (address[] memory _targets, uint256[] memory _values, bytes[] memory _calldatas) =
-      createProposalHelper.createTreasuryProposalForSingleTransfer(ARB_TOKEN_ADDRESS, _to, _amount);
-
-    vm.startPrank(_getMajorDelegate(_actorSeed));
-    _proposalId = governor.propose(_targets, _values, _calldatas, _description);
-    vm.stopPrank();
-  }
-
-  function testFuzz_ProposalVoteSuccess(uint256 _actorSeed, address _to, uint256 _amount) public {
-    uint256 _proposalId = _proposeATreasuryProposal(_actorSeed, _to, _amount);
-
-    vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-    assertEq(uint256(governor.state(_proposalId)), uint256(ProposalState.Active));
-
-    // Vote For
-    for (uint256 i; i < _majorDelegates.length; i++) {
-      vm.prank(_majorDelegates[i]);
-      governor.castVote(_proposalId, uint8(VoteType.For));
-    }
-
-    vm.roll(vm.getBlockNumber() + governor.votingPeriod() + 1);
-    vm.assertEq(uint256(governor.state(_proposalId)), uint256(ProposalState.Succeeded));
-  }
-
-  function testFuzz_ProposalVoteDefeat(uint256 _actorSeed, address _to, uint256 _amount) public {
-    uint256 _proposalId = _proposeATreasuryProposal(_actorSeed, _to, _amount);
+  function testFuzz_ProposalVoteDefeat(uint256 _randomSeed) public {
+    (
+      /* address[] memory targets */
+      ,
+      /* uint256[] memory values */
+      ,
+      /* bytes[] memory calldatas */
+      ,
+      /* string memory description */
+      ,
+      uint256 _proposalId
+    ) = _proposeRealisticProposal(_randomSeed);
 
     vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
     assertEq(uint256(governor.state(_proposalId)), uint256(ProposalState.Active));
@@ -510,7 +459,7 @@ abstract contract CastVoteOnTreasuryGovernor is L2ArbitrumGovernorV2Test {
 }
 
 abstract contract Queue is L2ArbitrumGovernorV2Test {
-  function test_QueuesAWinningProposalAfterUpgrade() public {
+  function testFuzz_QueuesAWinningProposalAfterUpgrade(uint256 _randomSeed) public {
     _skipToPostUpgrade();
     (
       address[] memory targets,
@@ -518,7 +467,7 @@ abstract contract Queue is L2ArbitrumGovernorV2Test {
       bytes[] memory calldatas,
       string memory description,
       uint256 _proposalId
-    ) = _proposeTestProposal();
+    ) = _proposeRealisticProposal(_randomSeed);
     vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
 
     _voteForProposal(_proposalId, VoteType.For);
@@ -528,14 +477,14 @@ abstract contract Queue is L2ArbitrumGovernorV2Test {
     vm.assertEq(uint256(governor.state(_proposalId)), uint256(ProposalState.Queued));
   }
 
-  function test_RevertIf_QueuesAWinningProposalBeforeUpgrade() public {
+  function testFuzz_RevertIf_QueuesAWinningProposalBeforeUpgrade(uint256 _randomSeed) public {
     (
       address[] memory targets,
       uint256[] memory values,
       bytes[] memory calldatas,
       string memory description,
       uint256 _proposalId
-    ) = _proposeTestProposal();
+    ) = _proposeRealisticProposal(_randomSeed);
     vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
 
     _voteForProposal(_proposalId, VoteType.For);
@@ -554,7 +503,7 @@ abstract contract Queue is L2ArbitrumGovernorV2Test {
 }
 
 abstract contract Execute is L2ArbitrumGovernorV2Test {
-  function test_ExecutesAQueuedProposalAfterUpgrade() public {
+  function testFuzz_ExecutesAQueuedProposalAfterUpgrade(uint256 _randomSeed) public {
     _skipToPostUpgrade();
 
     // Propose
@@ -564,7 +513,7 @@ abstract contract Execute is L2ArbitrumGovernorV2Test {
       bytes[] memory _calldatas,
       string memory _description,
       uint256 _proposalId
-    ) = _proposeTestProposal();
+    ) = _proposeRealisticProposal(_randomSeed);
     vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
 
     // Vote
@@ -669,7 +618,7 @@ contract CoreGovernorPropose is CoreGovernorTest, Propose {
   }
 }
 
-contract CoreGovernorCastVote is CoreGovernorTest, CastVoteOnCoreGovernor {
+contract CoreGovernorCastVote is CoreGovernorTest, CastVote {
   function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
     super.setUp();
   }
@@ -717,7 +666,7 @@ contract TreasuryGovernorPropose is TreasuryGovernorTest, Propose {
   }
 }
 
-contract TreasuryGovernorVote is TreasuryGovernorTest, CastVoteOnTreasuryGovernor {
+contract TreasuryGovernorVote is TreasuryGovernorTest, CastVote {
   function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
     super.setUp();
   }
