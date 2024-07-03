@@ -17,8 +17,8 @@ import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgra
 abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
   uint256 constant FORK_BLOCK = 220_819_857; // Arbitrary recent block
 
+  // Deploy & setup scripts
   SubmitUpgradeProposalScript submitUpgradeProposalScript;
-  DeployTimelockRolesUpgrader deployTimelockRolesUpgrader;
   TimelockRolesUpgrader timelockRolesUpgrader;
   BaseGovernorDeployer proxyCoreGovernorDeployer;
   BaseGovernorDeployer proxyTreasuryGovernorDeployer;
@@ -66,8 +66,7 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
 
     // Prepare the script to submit upgrade proposal
     submitUpgradeProposalScript = new SubmitUpgradeProposalScript();
-
-    deployTimelockRolesUpgrader = new DeployTimelockRolesUpgrader();
+    DeployTimelockRolesUpgrader deployTimelockRolesUpgrader = new DeployTimelockRolesUpgrader();
     timelockRolesUpgrader = deployTimelockRolesUpgrader.run(address(newCoreGovernor), address(newTreasuryGovernor));
   }
 }

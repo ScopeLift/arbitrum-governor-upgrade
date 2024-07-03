@@ -39,7 +39,7 @@ contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateL
     )
   {
     _description = "Upgrade timelock roles";
-    (_targets, _values, _calldatas) = createCoreProposal(_description, _timelockRolesUpgrader, minDelay);
+    (_targets, _values, _calldatas) = createL2ArbSysProposal(_description, _timelockRolesUpgrader, minDelay);
 
     vm.startBroadcast(PROPOSER);
     _proposalId =
