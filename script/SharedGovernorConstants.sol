@@ -6,29 +6,28 @@ pragma solidity 0.8.26;
 // Inheritable extension holding governor deployment constants that are shared between the Core Governor and the
 // Treasury Governor. These should be carefully checked and reviewed before final deployment.
 contract SharedGovernorConstants {
-  address public constant PROXY_ADMIN = address(0x123);
   address public constant GOVERNOR_OWNER = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827; // Arb One Upgrade Executor
-  address public constant ARB_TOKEN_ADDRESS = 0x912CE59144191C1204E64559FE8253a0e49E6548;
+  address public constant L2_ARB_TOKEN_ADDRESS = 0x912CE59144191C1204E64559FE8253a0e49E6548;
 
-  address public constant ARBITRUM_CORE_GOVERNOR = 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9;
-  address public constant ARBITRUM_CORE_GOVERNOR_TIMELOCK = 0x34d45e99f7D8c45ed05B5cA72D54bbD1fb3F98f0;
-  address public constant ARBITRUM_TREASURY_GOVERNOR = 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4;
-  address public constant ARBITRUM_TREASURY_GOVERNOR_TIMELOCK = 0xbFc1FECa8B09A5c5D3EFfE7429eBE24b9c09EF58;
+  address public constant L2_CORE_GOVERNOR = 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9;
+  address public constant L2_CORE_GOVERNOR_TIMELOCK = 0x34d45e99f7D8c45ed05B5cA72D54bbD1fb3F98f0;
+  address public constant L2_TREASURY_GOVERNOR = 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4;
+  address public constant L2_TREASURY_GOVERNOR_TIMELOCK = 0xbFc1FECa8B09A5c5D3EFfE7429eBE24b9c09EF58;
 
+  address public constant L2_ARB_SYS = 0x0000000000000000000000000000000000000064;
   address public constant L2_ARB_TREASURY_FIXED_DELEGATE = 0xF3FC178157fb3c87548bAA86F9d24BA38E649B58;
+  address public constant L2_ARB_RETRYABLE_TX = 0x000000000000000000000000000000000000006E;
+  address public constant L2_SECURITY_COUNCIL_9 = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
 
   address public constant L1_TIMELOCK = 0xE6841D92B0C345144506576eC13ECf5103aC7f49;
   uint256 public constant L1_TIMELOCK_MIN_DELAY = 259_200; // TODO: Make sure this is up to date.
+  address public constant L1_ARB_ONE_DELAYED_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
 
-  address public constant SECURITY_COUNCIL_9 = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
-  address public constant ARB_SYS = 0x0000000000000000000000000000000000000064;
-  address public constant L2_ARB_RETRYABLE_TX = 0x000000000000000000000000000000000000006E;
-  address public constant UPGRADE_EXECUTOR = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827;
+  address public constant L2_UPGRADE_EXECUTOR = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827;
 
-  address public constant ARB_ONE_DELAYED_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
   address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
-  bytes32 public constant PROPOSER_ROLE = 0xb09aa5aeb3702cfd50b6b62bc4532604938f21248a27a1d5ca736082b6819cc1;
+  bytes32 public constant TIMELOCK_PROPOSER_ROLE = 0xb09aa5aeb3702cfd50b6b62bc4532604938f21248a27a1d5ca736082b6819cc1;
 
   // These values match the current production values for both governors. Note that they are expressed in L1 blocks,
   // with an assumed 12 second block time, because on Arbitrum, block.number returns the number of the L1.

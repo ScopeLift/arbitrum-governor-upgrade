@@ -53,16 +53,16 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
     newTreasuryGovernor = proxyTreasuryGovernorDeployer.run(_implementation);
 
     // Current governors and timelocks
-    currentCoreGovernor = GovernorUpgradeable(payable(ARBITRUM_CORE_GOVERNOR));
-    currentCoreTimelock = TimelockControllerUpgradeable(payable(ARBITRUM_CORE_GOVERNOR_TIMELOCK));
-    currentTreasuryGovernor = GovernorUpgradeable(payable(ARBITRUM_TREASURY_GOVERNOR));
-    currentTreasuryTimelock = TimelockControllerUpgradeable(payable(ARBITRUM_TREASURY_GOVERNOR_TIMELOCK));
+    currentCoreGovernor = GovernorUpgradeable(payable(L2_CORE_GOVERNOR));
+    currentCoreTimelock = TimelockControllerUpgradeable(payable(L2_CORE_GOVERNOR_TIMELOCK));
+    currentTreasuryGovernor = GovernorUpgradeable(payable(L2_TREASURY_GOVERNOR));
+    currentTreasuryTimelock = TimelockControllerUpgradeable(payable(L2_TREASURY_GOVERNOR_TIMELOCK));
 
-    // Deploy a mock ArbSys contract at ARB_SYS
-    vm.allowCheatcodes(address(ARB_SYS));
+    // Deploy a mock ArbSys contract at L2_ARB_SYS
+    vm.allowCheatcodes(address(L2_ARB_SYS));
     MockArbSys mockArbSys = new MockArbSys();
     bytes memory code = address(mockArbSys).code;
-    vm.etch(ARB_SYS, code);
+    vm.etch(L2_ARB_SYS, code);
 
     // Prepare the script to submit upgrade proposal
     submitUpgradeProposalScript = new SubmitUpgradeProposalScript();
@@ -105,10 +105,10 @@ contract MockArbSys is SharedGovernorConstants, Test {
       bytes memory _upgradeExecutorCallData
     ) = abi.decode(_retryableData, (address, address, uint256, uint256, uint256, bytes));
 
-    assertEq(_arbOneDelayedInbox, ARB_ONE_DELAYED_INBOX);
-    assertEq(_upgradeExecutor, UPGRADE_EXECUTOR);
+    assertEq(_arbOneDelayedInbox, L1_ARB_ONE_DELAYED_INBOX);
+    assertEq(_upgradeExecutor, L2_UPGRADE_EXECUTOR);
 
-    vm.prank(SECURITY_COUNCIL_9);
+    vm.prank(L2_SECURITY_COUNCIL_9);
     (bool success, /*bytes memory data*/ ) = _upgradeExecutor.call(_upgradeExecutorCallData);
     assertEq(success, true);
   }

@@ -14,11 +14,11 @@ contract DeployTimelockRolesUpgrader is BaseDeployer, SharedGovernorConstants {
   {
     vm.startBroadcast();
     timelockRolesUpgrader = new TimelockRolesUpgrader(
-      ARBITRUM_CORE_GOVERNOR_TIMELOCK,
-      ARBITRUM_CORE_GOVERNOR,
+      L2_CORE_GOVERNOR_TIMELOCK,
+      L2_CORE_GOVERNOR,
       _newCoreGovernor,
-      ARBITRUM_TREASURY_GOVERNOR_TIMELOCK,
-      ARBITRUM_TREASURY_GOVERNOR,
+      L2_TREASURY_GOVERNOR_TIMELOCK,
+      L2_TREASURY_GOVERNOR,
       _newTreasuryGovernor
     );
     vm.stopBroadcast();

@@ -11,7 +11,6 @@ import {ERC20VotesUpgradeable} from "openzeppelin-upgradeable/token/ERC20/extens
 import {IGovernor} from "openzeppelin/governance/IGovernor.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
-import {CreateL2ArbSysProposal} from "script/helpers/CreateL2ArbSysProposal.sol";
 import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
 import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
 import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
@@ -23,22 +22,22 @@ import {ProposalHelper, Proposal} from "test/helpers/ProposalHelper.sol";
 // ----------------------------------------------------------------------------------------------------------------- //
 
 abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
-  /// @dev Proxy admin contract deployed in construction of TransparentUpgradeableProxy
+  // state
+  L2ArbitrumGovernorV2 governor;
+  TimelockControllerUpgradeable timelock;
+  address PROXY_ADMIN_CONTRACT;
   ERC20Mock mockToken;
   ERC20VotesUpgradeable arbitrumToken;
-  CreateL2ArbSysProposal createL2ArbSysProposal;
-  TimelockControllerUpgradeable timelock;
-  L2ArbitrumGovernorV2 governor;
-  BaseGovernorDeployer proxyDeployer;
+
+  // helper contracts
   ProposalHelper proposalHelper;
-  address PROXY_ADMIN_CONTRACT;
+  BaseGovernorDeployer proxyDeployer;
 
   function setUp() public virtual override {
     super.setUp();
 
     // State that both core and treasury governors can use
-    createL2ArbSysProposal = new CreateL2ArbSysProposal();
-    arbitrumToken = ERC20VotesUpgradeable(ARB_TOKEN_ADDRESS);
+    arbitrumToken = ERC20VotesUpgradeable(L2_ARB_TOKEN_ADDRESS);
     mockToken = new ERC20Mock();
     proposalHelper = new ProposalHelper();
   }
@@ -108,7 +107,11 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   }
 }
 
-abstract contract CoreGovernorTest is L2ArbitrumGovernorV2Test {
+// ----------------------------------------------------------------------------------------------------------------- //
+// Core Governor Base - An extended base test suite helping us test proposals relevant to Core Governor
+// ----------------------------------------------------------------------------------------------------------------- //
+
+abstract contract CoreGovernorBase is L2ArbitrumGovernorV2Test {
   function setUp() public virtual override {
     super.setUp();
     /// Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we
@@ -119,24 +122,24 @@ abstract contract CoreGovernorTest is L2ArbitrumGovernorV2Test {
     proxyDeployer = proxyCoreGovernorDeployer;
   }
 
-  function _proposeRealisticProposal(uint256 /*_randomSeed*/ ) internal override returns (Proposal memory) {
-    // Proposal[] memory _proposals = new Proposal[](2);
-    // uint256 _switch = _randomSeed % _proposals.length;
-    // if (_switch == 0) {
+  function _proposeRealisticProposal(uint256 _randomSeed) internal override returns (Proposal memory) {
+    Proposal[] memory _proposals = new Proposal[](1);
+
     // one type of realistic proposal would be to use ArbSys to do something via L2 UpgradeExecutor
     MockOneOffUpgrader _oneOffUpgrader = new MockOneOffUpgrader();
-
-    Proposal memory _proposal = proposalHelper.createL2ArbSysProposal(
+    _proposals[0] = proposalHelper.createL2ArbSysProposal(
       "Realistic core proposal", address(_oneOffUpgrader), L1_TIMELOCK_MIN_DELAY, governor, _getMajorDelegate(1)
     );
-    // } else if (_switch == 1) {
-    //   // another type of realistic proposal would be to use ArbSys to do something on L1 UpgradeExecutor
-    // }
-    return _proposal;
+
+    return _proposals[_randomSeed % _proposals.length];
   }
 }
 
-abstract contract TreasuryGovernorTest is L2ArbitrumGovernorV2Test {
+// ----------------------------------------------------------------------------------------------------------------- //
+// Treasury Governor Base - An extended base test suite helping us test proposals relevant to Treasury Governor
+// ----------------------------------------------------------------------------------------------------------------- //
+
+abstract contract TreasuryGovernorBase is L2ArbitrumGovernorV2Test {
   function setUp() public virtual override {
     super.setUp();
     // Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we hardcode
@@ -149,17 +152,20 @@ abstract contract TreasuryGovernorTest is L2ArbitrumGovernorV2Test {
 
   function _proposeRealisticProposal(uint256 _randomSeed) internal override returns (Proposal memory) {
     Proposal[] memory _proposals = new Proposal[](2);
+
     _proposals[0] = proposalHelper.createTreasuryProposalForSingleTransfer(
-      ARB_TOKEN_ADDRESS, address(0x1), 1_000_000 ether, governor, _getMajorDelegate(1)
+      L2_ARB_TOKEN_ADDRESS, address(0x1), 1_000_000 ether, governor, _getMajorDelegate(1)
     );
+
     // https://www.tally.xyz/gov/arbitrum/proposal/79183200449169085571205208154003416944507585311666453826890708127615057369177
     _proposals[1] = proposalHelper.createTreasuryProposalForSingleTransfer(
-      ARB_TOKEN_ADDRESS,
+      L2_ARB_TOKEN_ADDRESS,
       address(0x544cBe6698E2e3b676C76097305bBa588dEfB13A),
       1_900_000_000_000_000_000_000_000,
       governor,
       _getMajorDelegate(1)
     );
+
     return _proposals[_randomSeed % _proposals.length];
   }
 }
@@ -174,7 +180,7 @@ abstract contract Initialize is L2ArbitrumGovernorV2Test {
     assertEq(governor.votingDelay(), INITIAL_VOTING_DELAY);
     assertEq(governor.votingPeriod(), INITIAL_VOTING_PERIOD);
     assertEq(governor.proposalThreshold(), INITIAL_PROPOSAL_THRESHOLD);
-    assertEq(address(arbitrumToken), address(ARB_TOKEN_ADDRESS));
+    assertEq(address(arbitrumToken), address(L2_ARB_TOKEN_ADDRESS));
     assertEq(address(governor.timelock()), proxyDeployer.TIMELOCK_ADDRESS());
     assertEq(governor.lateQuorumVoteExtension(), INITIAL_VOTE_EXTENSION);
     assertEq(governor.owner(), GOVERNOR_OWNER);
@@ -440,7 +446,7 @@ abstract contract Queue is L2ArbitrumGovernorV2Test {
         "AccessControl: account ",
         Strings.toHexString(uint160(address(governor)), 20),
         " is missing role ",
-        Strings.toHexString(uint256(PROPOSER_ROLE), 32)
+        Strings.toHexString(uint256(TIMELOCK_PROPOSER_ROLE), 32)
       )
     );
     governor.queue(_proposal.targets, _proposal.values, _proposal.calldatas, keccak256(bytes(_proposal.description)));
@@ -533,98 +539,98 @@ contract MockOneOffUpgrader {
 // Concrete Test Contracts - Inherit from each abstract test and implement concrete methods for Core & Treasury case
 // ----------------------------------------------------------------------------------------------------------------- //
 
-contract CoreGovernorInitialize is CoreGovernorTest, Initialize {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoreGovernorInitialize is CoreGovernorBase, Initialize {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract CoreGovernorRelay is CoreGovernorTest, Relay {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoreGovernorRelay is CoreGovernorBase, Relay {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract CoreGovernorQuorum is CoreGovernorTest, Quorum {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoreGovernorQuorum is CoreGovernorBase, Quorum {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract CoreGovernorPropose is CoreGovernorTest, Propose {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoreGovernorPropose is CoreGovernorBase, Propose {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract CoreGovernorCastVote is CoreGovernorTest, CastVote {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoreGovernorCastVote is CoreGovernorBase, CastVote {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract CoverGovernorQueue is CoreGovernorTest, Queue {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoverGovernorQueue is CoreGovernorBase, Queue {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract CoreGovernorCancel is CoreGovernorTest, Cancel {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoreGovernorCancel is CoreGovernorBase, Cancel {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract CoreGovernorExecute is CoreGovernorTest, Execute {
-  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorTest) {
+contract CoreGovernorExecute is CoreGovernorBase, Execute {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorInitialize is TreasuryGovernorTest, Initialize {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorInitialize is TreasuryGovernorBase, Initialize {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorRelay is TreasuryGovernorTest, Relay {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorRelay is TreasuryGovernorBase, Relay {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorQuorum is TreasuryGovernorTest, Quorum {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorQuorum is TreasuryGovernorBase, Quorum {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorPropose is TreasuryGovernorTest, Propose {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorPropose is TreasuryGovernorBase, Propose {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorVote is TreasuryGovernorTest, CastVote {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorVote is TreasuryGovernorBase, CastVote {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorQueue is TreasuryGovernorTest, Queue {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorQueue is TreasuryGovernorBase, Queue {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorExecute is TreasuryGovernorTest, Execute {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorExecute is TreasuryGovernorBase, Execute {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }
 
-contract TreasuryGovernorCancel is TreasuryGovernorTest, Cancel {
-  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorTest) {
+contract TreasuryGovernorCancel is TreasuryGovernorBase, Cancel {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }
 }

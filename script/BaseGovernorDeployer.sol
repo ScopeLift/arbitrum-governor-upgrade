@@ -22,14 +22,14 @@ abstract contract BaseGovernorDeployer is BaseDeployer, SharedGovernorConstants 
 
   function run(address _implementation) public virtual returns (L2ArbitrumGovernorV2 _governor) {
     vm.startBroadcast(deployerPrivateKey);
-    TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(_implementation, PROXY_ADMIN, "");
+    TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(_implementation, GOVERNOR_OWNER, "");
     _governor = L2ArbitrumGovernorV2(payable(address(_proxy)));
     _governor.initialize(
       NAME(),
       INITIAL_VOTING_DELAY,
       INITIAL_VOTING_PERIOD,
       INITIAL_PROPOSAL_THRESHOLD,
-      IVotes(ARB_TOKEN_ADDRESS),
+      IVotes(L2_ARB_TOKEN_ADDRESS),
       TimelockControllerUpgradeable(TIMELOCK_ADDRESS()),
       QUORUM_NUMERATOR(),
       INITIAL_VOTE_EXTENSION,

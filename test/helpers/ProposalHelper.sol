@@ -21,12 +21,14 @@ contract ProposalHelper is CreateL2ArbSysProposal, Test {
     L2ArbitrumGovernorV2 _governor,
     address _proposer
   ) public returns (Proposal memory) {
-    address[] memory targets = new address[](1);
-    uint256[] memory values = new uint256[](1);
-    bytes[] memory calldatas = new bytes[](1);
+    // address[] memory targets = new address[](1);
+    // uint256[] memory values = new uint256[](1);
+    // bytes[] memory calldatas = new bytes[](1);
 
-    targets[0] = ARB_SYS;
-    calldatas[0] = createArbSysProposalCalldata(_proposalDescription, _oneOffUpgradeAddr, _minDelay);
+    // targets[0] = L2_ARB_SYS;
+    // calldatas[0] = createArbSysProposalCalldata(_proposalDescription, _oneOffUpgradeAddr, _minDelay);
+    (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
+      createL2ArbSysProposal(_proposalDescription, _oneOffUpgradeAddr, _minDelay);
     vm.prank(_proposer);
     uint256 _proposalId = _governor.propose(targets, values, calldatas, _proposalDescription);
     return Proposal(targets, values, calldatas, _proposalDescription, _proposalId);

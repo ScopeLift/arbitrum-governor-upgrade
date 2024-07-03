@@ -42,8 +42,7 @@ contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateL
     (_targets, _values, _calldatas) = createL2ArbSysProposal(_description, _timelockRolesUpgrader, minDelay);
 
     vm.startBroadcast(PROPOSER);
-    _proposalId =
-      GovernorUpgradeable(payable(ARBITRUM_CORE_GOVERNOR)).propose(_targets, _values, _calldatas, _description);
+    _proposalId = GovernorUpgradeable(payable(L2_CORE_GOVERNOR)).propose(_targets, _values, _calldatas, _description);
     vm.stopBroadcast();
   }
 }

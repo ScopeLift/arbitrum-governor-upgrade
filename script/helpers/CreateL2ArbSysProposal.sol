@@ -13,7 +13,7 @@ contract CreateL2ArbSysProposal is SharedGovernorConstants {
     values = new uint256[](1);
     calldatas = new bytes[](1);
 
-    targets[0] = ARB_SYS;
+    targets[0] = L2_ARB_SYS;
     calldatas[0] = createArbSysProposalCalldata(_proposalDescription, _oneOffUpgradeAddr, _minDelay);
   }
 
@@ -40,8 +40,8 @@ contract CreateL2ArbSysProposal is SharedGovernorConstants {
       retryableTicketMagic, // tells the l1 timelock that we want to make a retryable, instead of an l1 upgrade
       0, // ignored for l2 upgrades
       abi.encode( // these are the retryable data params
-        ARB_ONE_DELAYED_INBOX, // the inbox we want to use, should be arb one or nova inbox
-        UPGRADE_EXECUTOR, // the upgrade executor on the l2 network
+        L1_ARB_ONE_DELAYED_INBOX, // the inbox we want to use, should be arb one or nova inbox
+        L2_UPGRADE_EXECUTOR, // the upgrade executor on the l2 network
         0, // no value in this upgrade
         0, // max gas - will be filled in when the retryable is actually executed
         0, // max fee per gas - will be filled in when the retryable is actually executed
