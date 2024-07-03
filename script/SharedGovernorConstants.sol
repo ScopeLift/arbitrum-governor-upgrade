@@ -29,6 +29,8 @@ contract SharedGovernorConstants {
 
   bytes32 public constant TIMELOCK_PROPOSER_ROLE = 0xb09aa5aeb3702cfd50b6b62bc4532604938f21248a27a1d5ca736082b6819cc1;
 
+  uint8 public constant VOTE_TYPE_FRACTIONAL = 255;
+
   // These values match the current production values for both governors. Note that they are expressed in L1 blocks,
   // with an assumed 12 second block time, because on Arbitrum, block.number returns the number of the L1.
   uint48 public constant INITIAL_VOTING_DELAY = 21_600; // 3 days

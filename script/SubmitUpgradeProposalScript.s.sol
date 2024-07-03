@@ -6,7 +6,6 @@ pragma solidity 0.8.26;
 import {Script} from "forge-std/Script.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
-import {AccessControlUpgradeable} from "openzeppelin-upgradeable/access/AccessControlUpgradeable.sol";
 import {CreateL2ArbSysProposal} from "script/helpers/CreateL2ArbSysProposal.sol";
 
 contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateL2ArbSysProposal {
