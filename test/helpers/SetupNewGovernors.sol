@@ -2,20 +2,24 @@
 pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
+import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
 import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
+import {DeployImplementation} from "script/DeployImplementation.s.sol";
 import {DeployCoreGovernor} from "script/DeployCoreGovernor.s.sol";
 import {DeployTreasuryGovernor} from "script/DeployTreasuryGovernor.s.sol";
-import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
-import {DeployImplementation} from "script/DeployImplementation.s.sol";
+import {DeployTimelockRolesUpgrader} from "script/DeployTimelockRolesUpgrader.s.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
+import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
+import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
 
 abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
   uint256 constant FORK_BLOCK = 220_819_857; // Arbitrary recent block
 
+  // Deploy & setup scripts
   SubmitUpgradeProposalScript submitUpgradeProposalScript;
+  TimelockRolesUpgrader timelockRolesUpgrader;
   BaseGovernorDeployer proxyCoreGovernorDeployer;
   BaseGovernorDeployer proxyTreasuryGovernorDeployer;
 
@@ -29,17 +33,10 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
   L2ArbitrumGovernorV2 newCoreGovernor;
   L2ArbitrumGovernorV2 newTreasuryGovernor;
 
-  enum VoteType {
-    Against,
-    For,
-    Abstain
-  }
-
   function setUp() public virtual {
     vm.createSelectFork(
       vm.envOr("ARBITRUM_ONE_RPC_URL", string("Please set ARBITRUM_ONE_RPC_URL in your .env file")), FORK_BLOCK
     );
-    submitUpgradeProposalScript = new SubmitUpgradeProposalScript();
 
     // Deploy Governor implementation contract
     DeployImplementation _implementationDeployer = new DeployImplementation();
@@ -56,16 +53,21 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
     newTreasuryGovernor = proxyTreasuryGovernorDeployer.run(_implementation);
 
     // Current governors and timelocks
-    currentCoreGovernor = GovernorUpgradeable(payable(ARBITRUM_CORE_GOVERNOR));
-    currentCoreTimelock = TimelockControllerUpgradeable(payable(ARBITRUM_CORE_GOVERNOR_TIMELOCK));
-    currentTreasuryGovernor = GovernorUpgradeable(payable(ARBITRUM_TREASURY_GOVERNOR));
-    currentTreasuryTimelock = TimelockControllerUpgradeable(payable(ARBITRUM_TREASURY_GOVERNOR_TIMELOCK));
+    currentCoreGovernor = GovernorUpgradeable(payable(L2_CORE_GOVERNOR));
+    currentCoreTimelock = TimelockControllerUpgradeable(payable(L2_CORE_GOVERNOR_TIMELOCK));
+    currentTreasuryGovernor = GovernorUpgradeable(payable(L2_TREASURY_GOVERNOR));
+    currentTreasuryTimelock = TimelockControllerUpgradeable(payable(L2_TREASURY_GOVERNOR_TIMELOCK));
 
-    // Deploy a mock ArbSys contract at ARB_SYS
-    vm.allowCheatcodes(address(ARB_SYS));
+    // Deploy a mock ArbSys contract at L2_ARB_SYS
+    vm.allowCheatcodes(address(L2_ARB_SYS));
     MockArbSys mockArbSys = new MockArbSys();
     bytes memory code = address(mockArbSys).code;
-    vm.etch(ARB_SYS, code);
+    vm.etch(L2_ARB_SYS, code);
+
+    // Prepare the script to submit upgrade proposal
+    submitUpgradeProposalScript = new SubmitUpgradeProposalScript();
+    DeployTimelockRolesUpgrader deployTimelockRolesUpgrader = new DeployTimelockRolesUpgrader();
+    timelockRolesUpgrader = deployTimelockRolesUpgrader.run(address(newCoreGovernor), address(newTreasuryGovernor));
   }
 }
 
@@ -103,10 +105,10 @@ contract MockArbSys is SharedGovernorConstants, Test {
       bytes memory _upgradeExecutorCallData
     ) = abi.decode(_retryableData, (address, address, uint256, uint256, uint256, bytes));
 
-    assertEq(_arbOneDelayedInbox, ARB_ONE_DELAYED_INBOX);
-    assertEq(_upgradeExecutor, UPGRADE_EXECUTOR);
+    assertEq(_arbOneDelayedInbox, L1_ARB_ONE_DELAYED_INBOX);
+    assertEq(_upgradeExecutor, L2_UPGRADE_EXECUTOR);
 
-    vm.prank(SECURITY_COUNCIL_9);
+    vm.prank(L2_SECURITY_COUNCIL_9);
     (bool success, /*bytes memory data*/ ) = _upgradeExecutor.call(_upgradeExecutorCallData);
     assertEq(success, true);
   }

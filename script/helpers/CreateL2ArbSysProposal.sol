@@ -3,12 +3,25 @@ pragma solidity 0.8.26;
 
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 
-contract CreateProposalCalldata is SharedGovernorConstants {
-  function _createProposal(string memory _proposalDescription, address _oneOffUpgradeAddr, uint256 _minDelay)
-    internal
+contract CreateL2ArbSysProposal is SharedGovernorConstants {
+  function createL2ArbSysProposal(string memory _proposalDescription, address _oneOffUpgradeAddr, uint256 _minDelay)
+    public
     pure
-    returns (bytes memory)
+    returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
   {
+    targets = new address[](1);
+    values = new uint256[](1);
+    calldatas = new bytes[](1);
+
+    targets[0] = L2_ARB_SYS;
+    calldatas[0] = createArbSysProposalCalldata(_proposalDescription, _oneOffUpgradeAddr, _minDelay);
+  }
+
+  function createArbSysProposalCalldata(
+    string memory _proposalDescription,
+    address _oneOffUpgradeAddr,
+    uint256 _minDelay
+  ) public pure returns (bytes memory proposalCalldata) {
     address retryableTicketMagic = RETRYABLE_TICKET_MAGIC;
 
     // the data to call the upgrade executor with
@@ -27,8 +40,8 @@ contract CreateProposalCalldata is SharedGovernorConstants {
       retryableTicketMagic, // tells the l1 timelock that we want to make a retryable, instead of an l1 upgrade
       0, // ignored for l2 upgrades
       abi.encode( // these are the retryable data params
-        ARB_ONE_DELAYED_INBOX, // the inbox we want to use, should be arb one or nova inbox
-        UPGRADE_EXECUTOR, // the upgrade executor on the l2 network
+        L1_ARB_ONE_DELAYED_INBOX, // the inbox we want to use, should be arb one or nova inbox
+        L2_UPGRADE_EXECUTOR, // the upgrade executor on the l2 network
         0, // no value in this upgrade
         0, // max gas - will be filled in when the retryable is actually executed
         0, // max fee per gas - will be filled in when the retryable is actually executed
@@ -41,12 +54,11 @@ contract CreateProposalCalldata is SharedGovernorConstants {
 
     // the data provided to the L2 Arbitrum Governor in the propose() method
     // the target will be the ArbSys address on Arb One
-    bytes memory proposalCalldata = abi.encodeWithSelector(
+    proposalCalldata = abi.encodeWithSelector(
       IArbSys.sendTxToL1.selector, // the execution of the proposal will create an L2->L1 cross chain message
       L1_TIMELOCK, // the target of the cross chain message is the L1 timelock
       l1TimelockData // call the l1 timelock with the data created in the previous step
     );
-    return proposalCalldata;
   }
 }
 
@@ -81,4 +93,8 @@ interface IL2ArbitrumGovernor {
 
 interface ITimelockRolesUpgrader {
   function perform() external;
+}
+
+interface IFixedDelegateErc20Wallet {
+  function transfer(address _token, address _to, uint256 _amount) external returns (bool);
 }

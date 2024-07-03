@@ -7,9 +7,9 @@ import {Script} from "forge-std/Script.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
 import {AccessControlUpgradeable} from "openzeppelin-upgradeable/access/AccessControlUpgradeable.sol";
-import {CreateProposalCalldata} from "script/helpers/CreateProposalCalldata.sol";
+import {CreateL2ArbSysProposal} from "script/helpers/CreateL2ArbSysProposal.sol";
 
-contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateProposalCalldata {
+contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateL2ArbSysProposal {
   // TODO: Update `PROPOSER` to script msg.sender who will submit the proposal.
   address PROPOSER = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2Beat
   // TODO: Update `minDelay` to latest getMinDelay() from L1Timelock.
@@ -31,24 +31,18 @@ contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateP
   function proposeUpgrade(address _timelockRolesUpgrader)
     internal
     returns (
-      address[] memory targets,
-      uint256[] memory values,
-      bytes[] memory calldatas,
-      string memory description,
+      address[] memory _targets,
+      uint256[] memory _values,
+      bytes[] memory _calldatas,
+      string memory _description,
       uint256 _proposalId
     )
   {
-    targets = new address[](1);
-    values = new uint256[](1);
-    calldatas = new bytes[](1);
-    description = "Upgrade timelock roles";
-
-    targets[0] = ARB_SYS;
-    bytes memory proposalCalldata = _createProposal(description, _timelockRolesUpgrader, minDelay);
-    calldatas[0] = proposalCalldata;
+    _description = "Upgrade timelock roles";
+    (_targets, _values, _calldatas) = createL2ArbSysProposal(_description, _timelockRolesUpgrader, minDelay);
 
     vm.startBroadcast(PROPOSER);
-    _proposalId = GovernorUpgradeable(payable(ARBITRUM_CORE_GOVERNOR)).propose(targets, values, calldatas, description);
+    _proposalId = GovernorUpgradeable(payable(L2_CORE_GOVERNOR)).propose(_targets, _values, _calldatas, _description);
     vm.stopBroadcast();
   }
 }

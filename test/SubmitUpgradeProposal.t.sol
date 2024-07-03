@@ -19,11 +19,11 @@ import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
 contract SubmitUpgradeProposalTest is SetupNewGovernors {
   function test_SuccessfullyExecuteUpgradeProposal() public {
     TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
-      ARBITRUM_CORE_GOVERNOR_TIMELOCK,
-      ARBITRUM_CORE_GOVERNOR,
+      L2_CORE_GOVERNOR_TIMELOCK,
+      L2_CORE_GOVERNOR,
       address(newCoreGovernor),
-      ARBITRUM_TREASURY_GOVERNOR_TIMELOCK,
-      ARBITRUM_TREASURY_GOVERNOR,
+      L2_TREASURY_GOVERNOR_TIMELOCK,
+      L2_TREASURY_GOVERNOR,
       address(newTreasuryGovernor)
     );
 
@@ -60,13 +60,13 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
 
     assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newCoreGovernor)), true);
     assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newCoreGovernor)), true);
-    assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), ARBITRUM_CORE_GOVERNOR), false);
-    assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), ARBITRUM_CORE_GOVERNOR), false);
+    assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), L2_CORE_GOVERNOR), false);
+    assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), L2_CORE_GOVERNOR), false);
 
     assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newTreasuryGovernor)), true);
     assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newTreasuryGovernor)), true);
-    assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), ARBITRUM_TREASURY_GOVERNOR), false);
-    assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), ARBITRUM_TREASURY_GOVERNOR), false);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), L2_TREASURY_GOVERNOR), false);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), L2_TREASURY_GOVERNOR), false);
   }
 }
 
