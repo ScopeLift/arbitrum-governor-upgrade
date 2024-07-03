@@ -511,7 +511,7 @@ abstract contract CastVoteWithReasonAndParams is L2ArbitrumGovernorV2Test {
 
     address _delegate = _getMajorDelegate(_actorSeed);
     uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-    _firstVote = bound(_firstVote, 0, _votes);
+    _firstVote = bound(_firstVote, 0, _votes - 1);
     _forVotes = bound(_forVotes, 0, _firstVote);
     _againstVotes = bound(_againstVotes, 0, _firstVote - _forVotes);
     _abstainVotes = bound(_abstainVotes, 0, _firstVote - _forVotes - _againstVotes);
