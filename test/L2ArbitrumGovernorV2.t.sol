@@ -96,7 +96,7 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   function _skipToPostUpgrade() internal {
     if (
       UPGRADE_PROPOSAL_PASSED_ONCHAIN && L2_CORE_GOVERNOR_ONCHAIN != address(0)
-        && L2_TREASURY_GOVERNOR_ONCHAIN == address(0)
+        && L2_TREASURY_GOVERNOR_ONCHAIN != address(0)
     ) {
       return;
     }
