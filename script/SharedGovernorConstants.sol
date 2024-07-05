@@ -23,9 +23,16 @@ contract SharedGovernorConstants {
   uint256 public constant L1_TIMELOCK_MIN_DELAY = 259_200; // TODO: Make sure this is up to date.
   address public constant L1_ARB_ONE_DELAYED_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
 
+  address public constant L2_CORE_GOVERNOR_ONCHAIN = address(0); // TODO: Update with the deployed address.
+  address public constant L2_TREASURY_GOVERNOR_ONCHAIN = address(0); // TODO: Update with the deployed address.
+  bool public constant UPGRADE_PROPOSAL_PASSED_ONCHAIN = false; // TODO: Update after the upgrade proposal is passed.
+
   address public constant L2_UPGRADE_EXECUTOR = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827;
 
   address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
+
+  address public constant EXCLUDE_ADDRESS = address(0xA4b86);
+  uint256 public constant QUORUM_DENOMINATOR = 10_000;
 
   bytes32 public constant TIMELOCK_PROPOSER_ROLE = 0xb09aa5aeb3702cfd50b6b62bc4532604938f21248a27a1d5ca736082b6819cc1;
 
