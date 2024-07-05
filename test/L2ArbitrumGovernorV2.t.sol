@@ -266,7 +266,7 @@ abstract contract Initialize is L2ArbitrumGovernorV2Test {
     );
   }
 
-  function test_RevertIF_InitializeImplementationContract() public {
+  function test_RevertIf_InitializeImplementationContract() public {
     L2ArbitrumGovernorV2 governor2 = new L2ArbitrumGovernorV2();
     vm.expectRevert(InvalidInitialization.selector);
     governor2.initialize(
