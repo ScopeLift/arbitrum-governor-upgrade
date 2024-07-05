@@ -27,7 +27,6 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   error GovernorUnexpectedProposalState(uint256 proposalId, ProposalState current, bytes32 expectedStates);
 
   // state
-
   L2ArbitrumGovernorV2 governor;
   GovernorUpgradeable _oldGovernor;
   TimelockControllerUpgradeable timelock;
@@ -95,6 +94,12 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   }
 
   function _skipToPostUpgrade() internal {
+    if (
+      UPGRADE_PROPOSAL_PASSED_ONCHAIN && L2_CORE_GOVERNOR_ONCHAIN != address(0)
+        && L2_TREASURY_GOVERNOR_ONCHAIN == address(0)
+    ) {
+      return;
+    }
     (
       address[] memory _targets,
       uint256[] memory _values,
@@ -141,7 +146,9 @@ abstract contract CoreGovernorBase is L2ArbitrumGovernorV2Test {
     /// Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we
     /// hardcode the address
     PROXY_ADMIN_CONTRACT = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961;
-    governor = newCoreGovernor;
+    // If no deployed governor address is set, we use the locally deployed governor
+    governor =
+      L2_CORE_GOVERNOR_ONCHAIN == address(0) ? newCoreGovernor : L2ArbitrumGovernorV2(payable(L2_CORE_GOVERNOR_ONCHAIN));
     _oldGovernor = currentCoreGovernor;
     timelock = currentCoreTimelock;
     proxyDeployer = proxyCoreGovernorDeployer;
@@ -174,7 +181,10 @@ abstract contract TreasuryGovernorBase is L2ArbitrumGovernorV2Test {
     // Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we hardcode
     // the address
     PROXY_ADMIN_CONTRACT = 0xD3fe9b9cc02F23B3e3b43CF80700d8C7cf178339;
-    governor = newTreasuryGovernor;
+    // If no deployed governor address is set, we use the locally deployed governor
+    governor = L2_TREASURY_GOVERNOR_ONCHAIN == address(0)
+      ? newTreasuryGovernor
+      : L2ArbitrumGovernorV2(payable(L2_TREASURY_GOVERNOR_ONCHAIN));
     _oldGovernor = currentTreasuryGovernor;
     timelock = currentTreasuryTimelock;
     proxyDeployer = proxyTreasuryGovernorDeployer;
@@ -886,6 +896,41 @@ abstract contract Queue is L2ArbitrumGovernorV2Test {
     _oldGovernor.queue(
       _proposal.targets, _proposal.values, _proposal.calldatas, keccak256(bytes(_proposal.description))
     );
+  }
+
+  function testFuzz_OldGovernorQueuesAWinningProposalAfterDefeatedUpgrade(uint256 _proposalSeed) public {
+    (
+      /*address[] memory _targets*/
+      ,
+      /*uint256[] memory _values*/
+      ,
+      /*bytes[] memory _calldatas*/
+      ,
+      /*string memory _description*/
+      ,
+      uint256 _proposalId
+    ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader));
+
+    vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingDelay() + 1);
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
+
+    // Vote Against Upgrade Proposal
+    _voteForProposal(_proposalId, VoteType.Against, currentCoreGovernor);
+
+    // Upgrade Proposal Defeated
+    vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingPeriod() + 1);
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Defeated));
+
+    Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed, _oldGovernor);
+    vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
+
+    _voteForProposal(_proposal.proposalId, VoteType.For, _oldGovernor);
+    vm.roll(vm.getBlockNumber() + governor.votingPeriod() + 1);
+
+    _oldGovernor.queue(
+      _proposal.targets, _proposal.values, _proposal.calldatas, keccak256(bytes(_proposal.description))
+    );
+    assertEq(uint256(_oldGovernor.state(_proposal.proposalId)), uint256(IGovernor.ProposalState.Queued));
   }
 }
 

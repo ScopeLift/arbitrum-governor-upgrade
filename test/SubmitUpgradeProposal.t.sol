@@ -68,6 +68,53 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
     assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), L2_TREASURY_GOVERNOR), false);
     assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), L2_TREASURY_GOVERNOR), false);
   }
+
+  function test_DefeatedExecuteUpgradeProposalDoesNotChangeRoles() public {
+    TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
+      L2_CORE_GOVERNOR_TIMELOCK,
+      L2_CORE_GOVERNOR,
+      address(newCoreGovernor),
+      L2_TREASURY_GOVERNOR_TIMELOCK,
+      L2_TREASURY_GOVERNOR,
+      address(newTreasuryGovernor)
+    );
+
+    // Propose
+    (
+      /*address[] memory _targets*/
+      ,
+      /*uint256[] memory _values*/
+      ,
+      /*bytes[] memory _calldatas*/
+      ,
+      /*string memory _description*/
+      ,
+      uint256 _proposalId
+    ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader));
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Pending));
+    vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingDelay() + 1);
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Active));
+
+    // Vote
+    for (uint256 i; i < _majorDelegates.length; i++) {
+      vm.prank(_majorDelegates[i]);
+      currentCoreGovernor.castVote(_proposalId, uint8(VoteType.Against));
+    }
+
+    // Defeat
+    vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingPeriod() + 1);
+    assertEq(uint256(currentCoreGovernor.state(_proposalId)), uint256(IGovernor.ProposalState.Defeated));
+
+    assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newCoreGovernor)), false);
+    assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newCoreGovernor)), false);
+    assertEq(currentCoreTimelock.hasRole(keccak256("PROPOSER_ROLE"), L2_CORE_GOVERNOR), true);
+    assertEq(currentCoreTimelock.hasRole(keccak256("CANCELLER_ROLE"), L2_CORE_GOVERNOR), true);
+
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), address(newTreasuryGovernor)), false);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), address(newTreasuryGovernor)), false);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("PROPOSER_ROLE"), L2_TREASURY_GOVERNOR), true);
+    assertEq(currentTreasuryTimelock.hasRole(keccak256("CANCELLER_ROLE"), L2_TREASURY_GOVERNOR), true);
+  }
 }
 
 interface IUpgradeExecutor {
