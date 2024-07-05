@@ -246,6 +246,8 @@ abstract contract TreasuryGovernorBase is L2ArbitrumGovernorV2Test {
 // ----------------------------------------------------------------------------------------------------------------- //
 
 abstract contract Initialize is L2ArbitrumGovernorV2Test {
+  error InvalidInitialization();
+
   function test_ConfiguresTheParametersDuringInitialization() public {
     assertEq(governor.name(), proxyDeployer.NAME());
     assertEq(governor.votingDelay(), INITIAL_VOTING_DELAY);
@@ -260,6 +262,14 @@ abstract contract Initialize is L2ArbitrumGovernorV2Test {
   function test_RevertIf_InitializerIsCalledASecondTime() public {
     vm.expectRevert(Initializable.InvalidInitialization.selector);
     governor.initialize(
+      "TEST", 1, 1, 1, IVotes(address(0x1)), TimelockControllerUpgradeable(payable(address(0x1))), 1, 1, address(0x1)
+    );
+  }
+
+  function test_RevertIF_InitializeImplementationContract() public {
+    L2ArbitrumGovernorV2 governor2 = new L2ArbitrumGovernorV2();
+    vm.expectRevert(InvalidInitialization.selector);
+    governor2.initialize(
       "TEST", 1, 1, 1, IVotes(address(0x1)), TimelockControllerUpgradeable(payable(address(0x1))), 1, 1, address(0x1)
     );
   }
@@ -1055,6 +1065,44 @@ abstract contract Cancel is L2ArbitrumGovernorV2Test {
   }
 }
 
+abstract contract ProposalDeadline is L2ArbitrumGovernorV2Test {
+  function testFuzz_ReturnsCorrectDeadline(uint256 _proposalSeed) public {
+    Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
+    assertEq(
+      governor.proposalDeadline(_proposal.proposalId),
+      vm.getBlockNumber() + governor.votingDelay() + governor.votingPeriod()
+    );
+  }
+}
+
+abstract contract ProposalNeedsQueuing is L2ArbitrumGovernorV2Test {
+  function testFuzz_ReturnsTrueForAllProposals(uint256 _proposalSeed) public {
+    Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
+    assertEq(governor.proposalNeedsQueuing(_proposal.proposalId), true);
+  }
+}
+
+abstract contract GetPastCirculatingSupply is L2ArbitrumGovernorV2Test {
+  function testFuzz_ReturnsCorrectSupply(uint256 _pastBlockNumber) public view {
+    _pastBlockNumber = bound(_pastBlockNumber, 1, vm.getBlockNumber() - 1);
+    uint256 tokenPastTotalSupply = arbitrumToken.getPastTotalSupply(_pastBlockNumber);
+    uint256 excludeAddressVotes = arbitrumToken.getPastVotes(governor.EXCLUDE_ADDRESS(), _pastBlockNumber);
+    assertEq(governor.getPastCirculatingSupply(_pastBlockNumber), tokenPastTotalSupply - excludeAddressVotes);
+  }
+}
+
+abstract contract EXCLUDE_ADDRESS is L2ArbitrumGovernorV2Test {
+  function testFuzz_ReturnsCorrectExcludeAddress() public view {
+    assertEq(governor.EXCLUDE_ADDRESS(), EXCLUDE_ADDRESS);
+  }
+}
+
+abstract contract QuorumDenominator is L2ArbitrumGovernorV2Test {
+  function test_ReturnsCorrectQuorumDenominator() public view {
+    assertEq(governor.quorumDenominator(), QUORUM_DENOMINATOR);
+  }
+}
+
 contract MockOneOffUpgrader {
   function perform() public pure {}
 }
@@ -1117,6 +1165,36 @@ contract CoreGovernorExecute is CoreGovernorBase, Execute {
   }
 }
 
+contract CoreGovernorProposalDeadline is CoreGovernorBase, ProposalDeadline {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract CoreGovernorProposalNeedsQueuing is CoreGovernorBase, ProposalNeedsQueuing {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract CoreGovernorGetPastCirculatingSupply is CoreGovernorBase, GetPastCirculatingSupply {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract CoreGovernorExcludeAddress is CoreGovernorBase, EXCLUDE_ADDRESS {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract CoreGovernorQuorumDenominator is CoreGovernorBase, QuorumDenominator {
+  function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
+    super.setUp();
+  }
+}
+
 contract TreasuryGovernorInitialize is TreasuryGovernorBase, Initialize {
   function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
@@ -1166,6 +1244,36 @@ contract TreasuryGovernorExecute is TreasuryGovernorBase, Execute {
 }
 
 contract TreasuryGovernorCancel is TreasuryGovernorBase, Cancel {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract TreasuryGovernorProposalDeadline is TreasuryGovernorBase, ProposalDeadline {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract TreasuryGovernorProposalNeedsQueuing is TreasuryGovernorBase, ProposalNeedsQueuing {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract TreasuryGovernorGetPastCirculatingSupply is TreasuryGovernorBase, GetPastCirculatingSupply {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract TreasuryGovernorExcludeAddress is TreasuryGovernorBase, EXCLUDE_ADDRESS {
+  function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
+    super.setUp();
+  }
+}
+
+contract TreasuryGovernorQuorumDenominator is TreasuryGovernorBase, QuorumDenominator {
   function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
     super.setUp();
   }

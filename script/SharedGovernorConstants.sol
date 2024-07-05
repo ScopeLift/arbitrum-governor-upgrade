@@ -31,6 +31,9 @@ contract SharedGovernorConstants {
 
   address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
+  address public constant EXCLUDE_ADDRESS = address(0xA4b86);
+  uint256 public constant QUORUM_DENOMINATOR = 10_000;
+
   bytes32 public constant TIMELOCK_PROPOSER_ROLE = 0xb09aa5aeb3702cfd50b6b62bc4532604938f21248a27a1d5ca736082b6819cc1;
 
   uint8 public constant VOTE_TYPE_FRACTIONAL = 255;
