@@ -6,7 +6,6 @@ pragma solidity 0.8.26;
 // Inheritable extension holding governor deployment constants that are shared between the Core Governor and the
 // Treasury Governor. These should be carefully checked and reviewed before final deployment.
 contract SharedGovernorConstants {
-  address public constant GOVERNOR_OWNER = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827; // Arb One Upgrade Executor
   address public constant L2_ARB_TOKEN_ADDRESS = 0x912CE59144191C1204E64559FE8253a0e49E6548;
 
   address public constant L2_CORE_GOVERNOR = 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9;
