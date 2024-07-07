@@ -12,7 +12,7 @@ contract DeployCoreGovernor is BaseGovernorDeployer {
   }
 
   function TIMELOCK_ADDRESS() public pure override returns (address payable) {
-    return payable(0x34d45e99f7D8c45ed05B5cA72D54bbD1fb3F98f0);
+    return payable(L2_CORE_GOVERNOR_TIMELOCK);
   }
 
   function QUORUM_NUMERATOR() public pure override returns (uint256) {

@@ -60,7 +60,6 @@ contract L2ArbitrumGovernorV2 is
   ) public initializer {
     __Governor_init(_name);
     __GovernorSettings_init(_initialVotingDelay, _initialVotingPeriod, _initialProposalThreshold);
-    __GovernorCountingFractional_init();
     __GovernorVotes_init(_arbAddress);
     __GovernorTimelockControl_init(_timelockAddress);
     __GovernorVotesQuorumFraction_init(_quorumNumeratorValue);

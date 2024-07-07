@@ -12,7 +12,7 @@ contract DeployTreasuryGovernor is BaseGovernorDeployer {
   }
 
   function TIMELOCK_ADDRESS() public pure override returns (address payable) {
-    return payable(0xbFc1FECa8B09A5c5D3EFfE7429eBE24b9c09EF58);
+    return payable(L2_TREASURY_GOVERNOR_TIMELOCK);
   }
 
   function QUORUM_NUMERATOR() public pure override returns (uint256) {

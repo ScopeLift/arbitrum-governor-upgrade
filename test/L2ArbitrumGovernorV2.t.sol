@@ -11,6 +11,7 @@ import {ERC20VotesUpgradeable} from "openzeppelin-upgradeable/token/ERC20/extens
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
 import {IGovernor} from "openzeppelin/governance/IGovernor.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import {EtherReceiverMock} from "openzeppelin-contracts/contracts/mocks/EtherReceiverMock.sol";
 import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
 import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
 import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
@@ -33,6 +34,7 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   address PROXY_ADMIN_CONTRACT;
   ERC20Mock mockToken;
   ERC20VotesUpgradeable arbitrumToken;
+  EtherReceiverMock mockEthReceiver;
 
   // helper contracts
   ProposalHelper proposalHelper;
@@ -44,6 +46,8 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
     // State that both core and treasury governors can use
     arbitrumToken = ERC20VotesUpgradeable(L2_ARB_TOKEN_ADDRESS);
     mockToken = new ERC20Mock();
+    mockEthReceiver = new EtherReceiverMock();
+    mockEthReceiver.setAcceptEther(true);
     proposalHelper = new ProposalHelper();
   }
 
@@ -195,7 +199,7 @@ abstract contract TreasuryGovernorBase is L2ArbitrumGovernorV2Test {
     override
     returns (Proposal memory)
   {
-    Proposal[] memory _proposals = new Proposal[](5);
+    Proposal[] memory _proposals = new Proposal[](6);
 
     _proposals[0] = proposalHelper.createTreasuryProposalForSingleTransfer(
       L2_ARB_TOKEN_ADDRESS, address(0x1), 1_000_000 ether, _governor, _getMajorDelegate(1)
@@ -235,6 +239,10 @@ abstract contract TreasuryGovernorBase is L2ArbitrumGovernorV2Test {
       42_500_000_000_000_000_000_000,
       _governor,
       _getMajorDelegate(1)
+    );
+
+    _proposals[5] = proposalHelper.createEthTransferTreasuryProposal(
+      address(mockEthReceiver), 100 ether, _governor, _getMajorDelegate(1)
     );
 
     return _proposals[_proposalSeed % _proposals.length];

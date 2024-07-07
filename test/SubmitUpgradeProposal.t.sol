@@ -2,18 +2,9 @@
 pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {L2ArbitrumGovernorV2Test} from "test/L2ArbitrumGovernorV2.t.sol";
 import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
-import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
-import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
 import {IGovernor} from "openzeppelin-contracts/contracts/governance/IGovernor.sol";
-import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
-import {DeployCoreGovernor} from "script/DeployCoreGovernor.s.sol";
-import {DeployTreasuryGovernor} from "script/DeployTreasuryGovernor.s.sol";
-import {DeployImplementation} from "script/DeployImplementation.s.sol";
 import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
-import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
-import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 import {SetupNewGovernors} from "test/helpers/SetupNewGovernors.sol";
 
 contract SubmitUpgradeProposalTest is SetupNewGovernors {
