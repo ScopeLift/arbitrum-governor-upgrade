@@ -5,6 +5,7 @@
   remappings = [
     "forge-std/=lib/forge-std/src",
     "openzeppelin/=lib/openzeppelin-contracts/contracts",
+    "openzeppelin-v4/=lib/openzeppelin-contracts-v4/contracts",
     "openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts",
   ]
   solc_version = "0.8.26"

@@ -5,7 +5,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {Initializable} from "openzeppelin-upgradeable/proxy/utils/Initializable.sol";
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
-import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "openzeppelin-v4/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 import {ERC20VotesUpgradeable} from "openzeppelin-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable/governance/GovernorUpgradeable.sol";
@@ -31,7 +31,7 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
   L2ArbitrumGovernorV2 governor;
   GovernorUpgradeable _oldGovernor;
   TimelockControllerUpgradeable timelock;
-  address PROXY_ADMIN_CONTRACT;
+  address PROXY_ADMIN_CONTRACT = L2_PROXY_ADMIN;
   ERC20Mock mockToken;
   ERC20VotesUpgradeable arbitrumToken;
   EtherReceiverMock mockEthReceiver;
@@ -147,9 +147,6 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
 abstract contract CoreGovernorBase is L2ArbitrumGovernorV2Test {
   function setUp() public virtual override {
     super.setUp();
-    /// Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we
-    /// hardcode the address
-    PROXY_ADMIN_CONTRACT = 0x740f24A3cbF1fbA1226C6018511F96d1055ce961;
     // If no deployed governor address is set, we use the locally deployed governor
     governor =
       L2_CORE_GOVERNOR_ONCHAIN == address(0) ? newCoreGovernor : L2ArbitrumGovernorV2(payable(L2_CORE_GOVERNOR_ONCHAIN));
@@ -182,9 +179,6 @@ abstract contract CoreGovernorBase is L2ArbitrumGovernorV2Test {
 abstract contract TreasuryGovernorBase is L2ArbitrumGovernorV2Test {
   function setUp() public virtual override {
     super.setUp();
-    // Proxy admin contract deployed in construction of TransparentUpgradeableProxy -- getter is internal so we hardcode
-    // the address
-    PROXY_ADMIN_CONTRACT = 0xD3fe9b9cc02F23B3e3b43CF80700d8C7cf178339;
     // If no deployed governor address is set, we use the locally deployed governor
     governor = L2_TREASURY_GOVERNOR_ONCHAIN == address(0)
       ? newTreasuryGovernor

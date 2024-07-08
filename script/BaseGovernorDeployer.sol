@@ -6,7 +6,7 @@ pragma solidity 0.8.26;
 import {BaseDeployer} from "script/BaseDeployer.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
-import {TransparentUpgradeableProxy} from "openzeppelin/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "openzeppelin-v4/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
 
@@ -22,7 +22,7 @@ abstract contract BaseGovernorDeployer is BaseDeployer, SharedGovernorConstants 
 
   function run(address _implementation) public virtual returns (L2ArbitrumGovernorV2 _governor) {
     vm.startBroadcast(deployerPrivateKey);
-    TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(_implementation, L2_UPGRADE_EXECUTOR, "");
+    TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(_implementation, L2_PROXY_ADMIN, "");
     _governor = L2ArbitrumGovernorV2(payable(address(_proxy)));
     _governor.initialize(
       NAME(),
