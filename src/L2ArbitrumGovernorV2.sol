@@ -37,10 +37,10 @@ contract L2ArbitrumGovernorV2 is
   ///         are not eligible to vote. However, even if their voting/delegation is restricted their
   ///         tokens will still count towards the total supply, and will therefore affect the quorom.
   ///         Restricted addresses should be forced to delegate their votes to this special exclude
-  ///         addresses which is not counted when calculating quorum
-  ///         Example address that should be excluded: DAO treasury, foundation, unclaimed tokens,
+  ///         address which is not counted when calculating quorum
+  ///         Example addresses that should be excluded: DAO treasury, foundation, unclaimed tokens,
   ///         burned tokens and swept (see TokenDistributor) tokens.
-  ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
+  ///         Note that Excluded Address is a readable name with no code or PK associated with it, and thus can't vote.
   address public constant EXCLUDE_ADDRESS = address(0xA4b86);
 
   constructor() {
