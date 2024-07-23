@@ -35,7 +35,7 @@ contract L2ArbitrumGovernorV2 is
   /// @notice address for which votes will not be counted toward quorum
   /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
   ///         are not eligible to vote. However, even if their voting/delegation is restricted their
-  ///         tokens will still count towards the total supply, and will therefore affect the quorom.
+  ///         tokens will still count towards the total supply, and will therefore affect the quorum.
   ///         Restricted addresses should be forced to delegate their votes to this special exclude
   ///         address which is not counted when calculating quorum
   ///         Example addresses that should be excluded: DAO treasury, foundation, unclaimed tokens,
