@@ -173,7 +173,7 @@ contract L2ArbitrumGovernorV2 is
     return GovernorUpgradeable.cancel(targets, values, calldatas, descriptionHash);
   }
 
-  /// @notice Cast a vote for a proposal.
+  /// @dev Cast a vote for a proposal.
   /// @param _proposalId The id of the proposal.
   /// @param _support The support value for the vote.
   /// @param _reason The reason for the vote.
@@ -188,8 +188,7 @@ contract L2ArbitrumGovernorV2 is
     return GovernorPreventLateQuorumUpgradeable._castVote(_proposalId, _account, _support, _reason, _params);
   }
 
-  /// @notice Cancels a proposal.
-  /// @dev Internal cancel function.
+  /// @dev Cancels a proposal.
   /// @param _targets The list of target addresses for calls to be made in the proposal.
   /// @param _values The list of values (ETH) to be passed to the calls in the proposal.
   /// @param _calldatas The list of calldata for the calls in the proposal.
@@ -204,7 +203,7 @@ contract L2ArbitrumGovernorV2 is
     return GovernorTimelockControlUpgradeable._cancel(_targets, _values, _calldatas, _descriptionHash);
   }
 
-  /// @notice Queues a proposal to be executed.
+  /// @dev Queues a proposal to be executed.
   /// @param _proposalId The id of the proposal.
   /// @param _targets A list of target addresses for calls to be made in the proposal.
   /// @param _values A list of values (ETH) to be passed to the calls in the proposal.
@@ -255,7 +254,7 @@ contract L2ArbitrumGovernorV2 is
     Address.functionCallWithValue(target, data, value);
   }
 
-  /// @notice returns l2 executor address; used internally for onlyGovernance check
+  /// @dev returns l2 executor address; used internally for onlyGovernance check
   /// @return address of the executor
   function _executor()
     internal
@@ -266,7 +265,7 @@ contract L2ArbitrumGovernorV2 is
     return address(this);
   }
 
-  /// @notice Executes a proposal.
+  /// @dev Executes a proposal.
   /// @param _proposalId The id of the proposal.
   /// @param _targets A list of target addresses for calls to be made in the proposal.
   /// @param _values A list of values (ETH) to be passed to the calls in the proposal.
