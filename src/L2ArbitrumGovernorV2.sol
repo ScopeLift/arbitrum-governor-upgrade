@@ -43,10 +43,21 @@ contract L2ArbitrumGovernorV2 is
   ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
   address public constant EXCLUDE_ADDRESS = address(0xA4b86);
 
+  /// @notice Disables the initialize function.
   constructor() {
     _disableInitializers();
   }
 
+  /// @notice Initializes the Governor with the provided parameters.
+  /// @param _name The name of the Governor.
+  /// @param _initialVotingDelay The initial voting delay.
+  /// @param _initialVotingPeriod The initial voting period.
+  /// @param _initialProposalThreshold The initial proposal threshold.
+  /// @param _arbAddress The address of the Arbitrum token.
+  /// @param _timelockAddress The address of the Timelock.
+  /// @param _quorumNumeratorValue The initial quorum numerator value.
+  /// @param _initialVoteExtension The initial vote extension.
+  /// @param _initialOwner The initial owner of the Governor.
   function initialize(
     string memory _name,
     uint48 _initialVotingDelay,
@@ -73,6 +84,10 @@ contract L2ArbitrumGovernorV2 is
     return 10_000;
   }
 
+  /// @notice Returns timepoint at which votes close for a specific proposal.
+  /// @dev Votes close at the end of a block, so it is possible to cast a vote during the timepoint block.
+  /// @param _proposalId The id of the proposal.
+  /// @return The timepoint at which votes close.
   function proposalDeadline(uint256 _proposalId)
     public
     view
@@ -83,6 +98,9 @@ contract L2ArbitrumGovernorV2 is
     return GovernorPreventLateQuorumUpgradeable.proposalDeadline(_proposalId);
   }
 
+  /// @notice Returns whether a proposal needs to be queued before execution.
+  /// @param _proposalId The id of the proposal.
+  /// @return Whether the proposal needs to be queued.
   function proposalNeedsQueuing(uint256 _proposalId)
     public
     view
@@ -93,6 +111,8 @@ contract L2ArbitrumGovernorV2 is
     return GovernorTimelockControlUpgradeable.proposalNeedsQueuing(_proposalId);
   }
 
+  /// @notice Returns the number of votes required in order for a voter to become a proposer.
+  /// @return The number of votes required to propose.
   function proposalThreshold()
     public
     view
@@ -103,6 +123,9 @@ contract L2ArbitrumGovernorV2 is
     return GovernorSettingsUpgradeable.proposalThreshold();
   }
 
+  /// @notice Returns the state of a proposal.
+  /// @param _proposalId The id of the proposal.
+  /// @return One of the values from ProposalState enum.
   function state(uint256 _proposalId)
     public
     view
@@ -114,11 +137,15 @@ contract L2ArbitrumGovernorV2 is
   }
 
   /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
+  /// @param timepoint The timepoint at which to calculate the circulating supply.
+  /// @return The circulating supply of votes.
   function getPastCirculatingSupply(uint256 timepoint) public view virtual returns (uint256) {
     return token().getPastTotalSupply(timepoint) - token().getPastVotes(EXCLUDE_ADDRESS, timepoint);
   }
 
   /// @notice Calculates the quorum size, excludes token delegated to the exclude address
+  /// @param timepoint The timepoint at which to calculate the quorum.
+  /// @return The quorum size.
   function quorum(uint256 timepoint)
     public
     view
@@ -128,6 +155,12 @@ contract L2ArbitrumGovernorV2 is
     return (getPastCirculatingSupply(timepoint) * quorumNumerator(timepoint)) / quorumDenominator();
   }
 
+  /// @notice Cancels a proposal.
+  /// @param targets A list of target addresses for calls to be made in the proposal.
+  /// @param values A list of values (ETH) to be passed to the calls in the proposal.
+  /// @param calldatas A list of calldata for the calls in the proposal.
+  /// @param descriptionHash The hash of the description for the proposal.
+  /// @return The id of the proposal.
   function cancel(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
     public
     override
@@ -140,6 +173,12 @@ contract L2ArbitrumGovernorV2 is
     return GovernorUpgradeable.cancel(targets, values, calldatas, descriptionHash);
   }
 
+  /// @notice Cast a vote for a proposal.
+  /// @param _proposalId The id of the proposal.
+  /// @param _support The support value for the vote.
+  /// @param _reason The reason for the vote.
+  /// @param _params Additional parameters for the vote.
+  /// @return The voting weight.
   function _castVote(uint256 _proposalId, address _account, uint8 _support, string memory _reason, bytes memory _params)
     internal
     virtual
@@ -149,6 +188,13 @@ contract L2ArbitrumGovernorV2 is
     return GovernorPreventLateQuorumUpgradeable._castVote(_proposalId, _account, _support, _reason, _params);
   }
 
+  /// @notice Cancels a proposal.
+  /// @dev Internal cancel function.
+  /// @param _targets The list of target addresses for calls to be made in the proposal.
+  /// @param _values The list of values (ETH) to be passed to the calls in the proposal.
+  /// @param _calldatas The list of calldata for the calls in the proposal.
+  /// @param _descriptionHash The hash of the description for the proposal.
+  /// @return The id of the proposal.
   function _cancel(
     address[] memory _targets,
     uint256[] memory _values,
@@ -158,6 +204,13 @@ contract L2ArbitrumGovernorV2 is
     return GovernorTimelockControlUpgradeable._cancel(_targets, _values, _calldatas, _descriptionHash);
   }
 
+  /// @notice Queues a proposal to be executed.
+  /// @param _proposalId The id of the proposal.
+  /// @param _targets A list of target addresses for calls to be made in the proposal.
+  /// @param _values A list of values (ETH) to be passed to the calls in the proposal.
+  /// @param _calldatas A list of calldata for the calls in the proposal.
+  /// @param _descriptionHash The hash of the description for the proposal.
+  /// @return The id of the proposal.
   function _queueOperations(
     uint256 _proposalId,
     address[] memory _targets,
@@ -203,6 +256,7 @@ contract L2ArbitrumGovernorV2 is
   }
 
   /// @notice returns l2 executor address; used internally for onlyGovernance check
+  /// @return address of the executor
   function _executor()
     internal
     view
@@ -212,6 +266,12 @@ contract L2ArbitrumGovernorV2 is
     return address(this);
   }
 
+  /// @notice Executes a proposal.
+  /// @param _proposalId The id of the proposal.
+  /// @param _targets A list of target addresses for calls to be made in the proposal.
+  /// @param _values A list of values (ETH) to be passed to the calls in the proposal.
+  /// @param _calldatas A list of calldata for the calls in the proposal.
+  /// @param _descriptionHash The hash of the description for the proposal.
   function _executeOperations(
     uint256 _proposalId,
     address[] memory _targets,
