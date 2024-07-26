@@ -4,17 +4,21 @@ pragma solidity 0.8.26;
 import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance/TimelockControllerUpgradeable.sol";
 
 contract TimelockRolesUpgrader {
-  /// @notice The address of the Core Timelock contract
+  /// @notice The address of the Core Timelock contract where proposals are queued and executed.
   address public immutable CORE_TIMELOCK;
-  /// @notice The address of the current Core Governor contract
+  /// @notice The address of the current Core Governor contract that has the `PROPOSER_ROLE` and `CANCELLER_ROLE` roles,
+  /// which will be revoked.
   address public immutable CURRENT_CORE_GOVERNOR;
-  /// @notice The address of the new Core Governor contract
+  /// @notice The address of the new Core Governor contract that will have the `PROPOSER_ROLE` and `CANCELLER_ROLE`
+  /// roles.
   address public immutable NEW_CORE_GOVERNOR;
-  /// @notice The address of the Treasury Timelock contract
+  /// @notice The address of the Treasury Timelock contract where proposals are queued and executed.
   address public immutable TREASURY_TIMELOCK;
-  /// @notice The address of the current Treasury Governor contract
+  /// @notice The address of the current Treasury Governor contract that has the `PROPOSER_ROLE` and `CANCELLER_ROLE`
+  /// roles, which will be revoked.
   address public immutable CURRENT_TREASURY_GOVERNOR;
-  /// @notice The address of the new Treasury Governor contract
+  /// @notice The address of the new Treasury Governor contract that will have the `PROPOSER_ROLE` and `CANCELLER_ROLE`
+  /// roles.
   address public immutable NEW_TREASURY_GOVERNOR;
 
   /// @notice Sets up the contract with the given parameters
@@ -46,13 +50,15 @@ contract TimelockRolesUpgrader {
     NEW_TREASURY_GOVERNOR = _newTreasuryGovernor;
   }
 
-  // @notice Swaps the governor roles on the Timelock contract for both Core and Treasury governors.
+  // @notice Swaps the `PROPOSER_ROLE` and `CANCELLER_ROLE` roles of the old Core Governor and Treasury Governor
+  // contracts on the Timelock contract to new Core and Treasury governor contracts.
   function perform() external {
     _swapGovernorsOnTimelock(CORE_TIMELOCK, CURRENT_CORE_GOVERNOR, NEW_CORE_GOVERNOR);
     _swapGovernorsOnTimelock(TREASURY_TIMELOCK, CURRENT_TREASURY_GOVERNOR, NEW_TREASURY_GOVERNOR);
   }
 
-  // @dev Swaps the governor roles on the Timelock contract for a single governor.
+  // @dev Grants `PROPOSER_ROLE` and `CANCELLER_ROLE` roles on the Timelock contract to a single new governor and
+  // Revokes the roles from the old governor
   // @param _timelock The address of the Timelock contract
   // @param _oldGovernor The address of the current governor
   // @param _newGovernor The address of the new governor

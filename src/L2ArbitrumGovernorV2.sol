@@ -79,15 +79,14 @@ contract L2ArbitrumGovernorV2 is
   }
 
   /// @inheritdoc GovernorVotesQuorumFractionUpgradeable
+  /// @dev We override this function to resolve ambiguity between inherited contracts
   function quorumDenominator() public pure override(GovernorVotesQuorumFractionUpgradeable) returns (uint256) {
     // update to 10k to allow for higher precision
     return 10_000;
   }
 
-  /// @notice Returns timepoint at which votes close for a specific proposal.
-  /// @dev Votes close at the end of a block, so it is possible to cast a vote during the timepoint block.
-  /// @param _proposalId The id of the proposal.
-  /// @return The timepoint at which votes close.
+  /// @inheritdoc GovernorPreventLateQuorumUpgradeable
+  /// @dev We override this function to resolve ambiguity between inherited contracts
   function proposalDeadline(uint256 _proposalId)
     public
     view
@@ -98,9 +97,8 @@ contract L2ArbitrumGovernorV2 is
     return GovernorPreventLateQuorumUpgradeable.proposalDeadline(_proposalId);
   }
 
-  /// @notice Returns whether a proposal needs to be queued before execution.
-  /// @param _proposalId The id of the proposal.
-  /// @return Whether the proposal needs to be queued.
+  /// @inheritdoc GovernorTimelockControlUpgradeable
+  /// @dev We override this function to resolve ambiguity between inherited contracts
   function proposalNeedsQueuing(uint256 _proposalId)
     public
     view
@@ -111,8 +109,8 @@ contract L2ArbitrumGovernorV2 is
     return GovernorTimelockControlUpgradeable.proposalNeedsQueuing(_proposalId);
   }
 
-  /// @notice Returns the number of votes required in order for a voter to become a proposer.
-  /// @return The number of votes required to propose.
+  /// @inheritdoc GovernorSettingsUpgradeable
+  /// @dev We override this function to resolve ambiguity between inherited contracts
   function proposalThreshold()
     public
     view
@@ -123,9 +121,8 @@ contract L2ArbitrumGovernorV2 is
     return GovernorSettingsUpgradeable.proposalThreshold();
   }
 
-  /// @notice Returns the state of a proposal.
-  /// @param _proposalId The id of the proposal.
-  /// @return One of the values from ProposalState enum.
+  /// @inheritdoc GovernorTimelockControlUpgradeable
+  /// @dev We override this function to resolve ambiguity between inherited contracts
   function state(uint256 _proposalId)
     public
     view
@@ -143,7 +140,8 @@ contract L2ArbitrumGovernorV2 is
     return token().getPastTotalSupply(timepoint) - token().getPastVotes(EXCLUDE_ADDRESS, timepoint);
   }
 
-  /// @notice Calculates the quorum size, excludes token delegated to the exclude address
+  /// @notice Calculates the quorum size, excludes token delegated to the exclude address.
+  /// @dev We override this function to use the circulating supply to calculate the quorum.
   /// @param timepoint The timepoint at which to calculate the quorum.
   /// @return The quorum size.
   function quorum(uint256 timepoint)
@@ -155,7 +153,7 @@ contract L2ArbitrumGovernorV2 is
     return (getPastCirculatingSupply(timepoint) * quorumNumerator(timepoint)) / quorumDenominator();
   }
 
-  /// @notice Cancels a proposal.
+  /// @notice Allows a proposer to cancel a proposal when it is pending.
   /// @param targets A list of target addresses for calls to be made in the proposal.
   /// @param values A list of values (ETH) to be passed to the calls in the proposal.
   /// @param calldatas A list of calldata for the calls in the proposal.
@@ -173,7 +171,7 @@ contract L2ArbitrumGovernorV2 is
     return GovernorUpgradeable.cancel(targets, values, calldatas, descriptionHash);
   }
 
-  /// @dev Cast a vote for a proposal.
+  /// @dev Allows a proposer to vote on a proposal during its voting period.
   /// @param _proposalId The id of the proposal.
   /// @param _support The support value for the vote.
   /// @param _reason The reason for the vote.
@@ -188,7 +186,7 @@ contract L2ArbitrumGovernorV2 is
     return GovernorPreventLateQuorumUpgradeable._castVote(_proposalId, _account, _support, _reason, _params);
   }
 
-  /// @dev Cancels a proposal.
+  /// @dev Allows a proposer to cancel a proposal when it is pending.
   /// @param _targets The list of target addresses for calls to be made in the proposal.
   /// @param _values The list of values (ETH) to be passed to the calls in the proposal.
   /// @param _calldatas The list of calldata for the calls in the proposal.
@@ -203,7 +201,7 @@ contract L2ArbitrumGovernorV2 is
     return GovernorTimelockControlUpgradeable._cancel(_targets, _values, _calldatas, _descriptionHash);
   }
 
-  /// @dev Queues a proposal to be executed.
+  /// @dev Queues a proposal to be executed after it has succeeded.
   /// @param _proposalId The id of the proposal.
   /// @param _targets A list of target addresses for calls to be made in the proposal.
   /// @param _values A list of values (ETH) to be passed to the calls in the proposal.
@@ -265,7 +263,7 @@ contract L2ArbitrumGovernorV2 is
     return address(this);
   }
 
-  /// @dev Executes a proposal.
+  /// @dev Executes a proposal after it has been queued.
   /// @param _proposalId The id of the proposal.
   /// @param _targets A list of target addresses for calls to be made in the proposal.
   /// @param _values A list of values (ETH) to be passed to the calls in the proposal.
