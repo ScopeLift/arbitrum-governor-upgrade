@@ -46,7 +46,7 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
     uint256 againstVotes;
     uint256 forVotes;
     uint256 abstainVotes;
-    mapping(address voter => uint256) usedVotes;
+    mapping(address voter => uint256 votes) usedVotes;
   }
 
   /// @custom:storage-location erc7201:openzeppelin.storage.GovernorCountingFractional
@@ -54,7 +54,7 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
     /**
      * @dev Mapping from proposal ID to vote tallies for that proposal.
      */
-    mapping(uint256 => ProposalVote) _proposalVotes;
+    mapping(uint256 proposalId => ProposalVote proposalVote) _proposalVotes;
   }
 
   // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.GovernorCountingFractional")) - 1)) &
