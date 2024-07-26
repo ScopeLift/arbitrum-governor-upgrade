@@ -53,10 +53,10 @@ contract TimelockRolesUpgrader {
   }
 
   function _grantRole(address _timelock, address _governor, bytes32 _role) private {
-    TimelockControllerUpgradeable(payable(_timelock)).grantRole(_role, address(_governor));
+    TimelockControllerUpgradeable(payable(_timelock)).grantRole(_role, _governor);
   }
 
   function _revokeRole(address _timelock, address _governor, bytes32 _role) private {
-    TimelockControllerUpgradeable(payable(_timelock)).revokeRole(_role, address(_governor));
+    TimelockControllerUpgradeable(payable(_timelock)).revokeRole(_role, _governor);
   }
 }
