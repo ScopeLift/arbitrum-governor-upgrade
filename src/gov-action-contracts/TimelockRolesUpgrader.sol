@@ -21,13 +21,13 @@ contract TimelockRolesUpgrader {
   /// roles.
   address public immutable NEW_TREASURY_GOVERNOR;
 
-  /// @notice Sets up the contract with the given parameters
-  /// @param _coreTimelock The address of the Core Timelock contract
-  /// @param _currentCoreGovernor The address of the current Core Governor contract
-  /// @param _newCoreGovernor The address of the new Core Governor contract
-  /// @param _treasuryTimelock The address of the Treasury Timelock contract
-  /// @param _currentTreasuryGovernor The address of the current Treasury Governor contract
-  /// @param _newTreasuryGovernor The address of the new Treasury Governor contract
+  /// @notice Sets up the contract with the given parameters.
+  /// @param _coreTimelock The address of the Core Timelock contract.
+  /// @param _currentCoreGovernor The address of the current Core Governor contract.
+  /// @param _newCoreGovernor The address of the new Core Governor contract.
+  /// @param _treasuryTimelock The address of the Treasury Timelock contract.
+  /// @param _currentTreasuryGovernor The address of the current Treasury Governor contract.
+  /// @param _newTreasuryGovernor The address of the new Treasury Governor contract.
   constructor(
     address _coreTimelock,
     address _currentCoreGovernor,
@@ -58,10 +58,10 @@ contract TimelockRolesUpgrader {
   }
 
   // @dev Grants `PROPOSER_ROLE` and `CANCELLER_ROLE` roles on the Timelock contract to a single new governor and
-  // Revokes the roles from the old governor
-  // @param _timelock The address of the Timelock contract
-  // @param _oldGovernor The address of the current governor
-  // @param _newGovernor The address of the new governor
+  // Revokes the roles from the old governor.
+  // @param _timelock The address of the Timelock contract.
+  // @param _oldGovernor The address of the current governor.
+  // @param _newGovernor The address of the new governor.
   function _swapGovernorsOnTimelock(address _timelock, address _oldGovernor, address _newGovernor) private {
     _grantRole(_timelock, _newGovernor, keccak256("PROPOSER_ROLE"));
     _grantRole(_timelock, _newGovernor, keccak256("CANCELLER_ROLE"));
@@ -76,18 +76,18 @@ contract TimelockRolesUpgrader {
     require(!timelock.hasRole(keccak256("CANCELLER_ROLE"), _oldGovernor), "CANCELLER_ROLE role not revoked");
   }
 
-  /// @dev Grants a role to a governor on a Timelock contract
-  /// @param _timelock The address of the Timelock contract
-  /// @param _governor The address of the governor being granted the role
-  /// @param _role The role to grant
+  /// @dev Grants a role to a governor on a Timelock contract.
+  /// @param _timelock The address of the Timelock contract.
+  /// @param _governor The address of the governor being granted the role.
+  /// @param _role The role to grant.
   function _grantRole(address _timelock, address _governor, bytes32 _role) private {
     TimelockControllerUpgradeable(payable(_timelock)).grantRole(_role, address(_governor));
   }
 
-  /// @dev Revokes a role from a governor on a Timelock contract
-  /// @param _timelock The address of the Timelock contract
-  /// @param _governor The address of the governor being revoked the role
-  /// @param _role The role to revoke
+  /// @dev Revokes a role from a governor on a Timelock contract.
+  /// @param _timelock The address of the Timelock contract.
+  /// @param _governor The address of the governor being revoked the role.
+  /// @param _role The role to revoke.
   function _revokeRole(address _timelock, address _governor, bytes32 _role) private {
     TimelockControllerUpgradeable(payable(_timelock)).revokeRole(_role, address(_governor));
   }

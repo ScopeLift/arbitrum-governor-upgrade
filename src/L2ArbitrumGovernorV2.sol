@@ -32,7 +32,7 @@ contract L2ArbitrumGovernorV2 is
   /// @notice Error thrown when canceling a non-pending proposal.
   error ProposalNotPending(GovernorUpgradeable.ProposalState state);
 
-  /// @notice address for which votes will not be counted toward quorum
+  /// @notice address for which votes will not be counted toward quorum.
   /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
   ///         are not eligible to vote. However, even if their voting/delegation is restricted their
   ///         tokens will still count towards the total supply, and will therefore affect the quorom.
@@ -79,14 +79,14 @@ contract L2ArbitrumGovernorV2 is
   }
 
   /// @inheritdoc GovernorVotesQuorumFractionUpgradeable
-  /// @dev We override this function to resolve ambiguity between inherited contracts
+  /// @dev We override this function to resolve ambiguity between inherited contracts.
   function quorumDenominator() public pure override(GovernorVotesQuorumFractionUpgradeable) returns (uint256) {
     // update to 10k to allow for higher precision
     return 10_000;
   }
 
   /// @inheritdoc GovernorPreventLateQuorumUpgradeable
-  /// @dev We override this function to resolve ambiguity between inherited contracts
+  /// @dev We override this function to resolve ambiguity between inherited contracts.
   function proposalDeadline(uint256 _proposalId)
     public
     view
@@ -98,7 +98,7 @@ contract L2ArbitrumGovernorV2 is
   }
 
   /// @inheritdoc GovernorTimelockControlUpgradeable
-  /// @dev We override this function to resolve ambiguity between inherited contracts
+  /// @dev We override this function to resolve ambiguity between inherited contracts.
   function proposalNeedsQueuing(uint256 _proposalId)
     public
     view
@@ -110,7 +110,7 @@ contract L2ArbitrumGovernorV2 is
   }
 
   /// @inheritdoc GovernorSettingsUpgradeable
-  /// @dev We override this function to resolve ambiguity between inherited contracts
+  /// @dev We override this function to resolve ambiguity between inherited contracts.
   function proposalThreshold()
     public
     view
@@ -122,7 +122,7 @@ contract L2ArbitrumGovernorV2 is
   }
 
   /// @inheritdoc GovernorTimelockControlUpgradeable
-  /// @dev We override this function to resolve ambiguity between inherited contracts
+  /// @dev We override this function to resolve ambiguity between inherited contracts.
   function state(uint256 _proposalId)
     public
     view
@@ -219,7 +219,7 @@ contract L2ArbitrumGovernorV2 is
       GovernorTimelockControlUpgradeable._queueOperations(_proposalId, _targets, _values, _calldatas, _descriptionHash);
   }
 
-  /// @notice Allows the owner to make calls from the governor
+  /// @notice Allows the owner to make calls from the governor.
   /// @dev    We want the owner to be able to upgrade settings and parameters on this Governor
   ///         however we can't use onlyGovernance as it requires calls originate from the governor
   ///         contract. The normal flow for onlyGovernance to work is to call execute on the governor
@@ -252,8 +252,8 @@ contract L2ArbitrumGovernorV2 is
     Address.functionCallWithValue(target, data, value);
   }
 
-  /// @dev returns l2 executor address; used internally for onlyGovernance check
-  /// @return address of the executor
+  /// @dev returns l2 executor address; used internally for onlyGovernance check.
+  /// @return address of the executor.
   function _executor()
     internal
     view
