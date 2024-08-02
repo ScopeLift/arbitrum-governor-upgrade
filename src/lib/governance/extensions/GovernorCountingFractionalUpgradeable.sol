@@ -35,7 +35,7 @@ import {Initializable} from "openzeppelin-upgradeable/proxy/utils/Initializable.
  * Based on ScopeLift's
  * GovernorCountingFractional[https://github.com/ScopeLift/flexible-voting/blob/e5de2efd1368387b840931f19f3c184c85842761/src/GovernorCountingFractional.sol]
  *
- * Please report any vulnerabilities here: https://immunefi.com/bug-bounty/arbitrum/information/
+ * @custom:security-contact https://immunefi.com/bug-bounty/arbitrum/information/
  */
 abstract contract GovernorCountingFractionalUpgradeable is Initializable, GovernorUpgradeable {
   using Math for *;

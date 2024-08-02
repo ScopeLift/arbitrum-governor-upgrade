@@ -6,7 +6,7 @@ import {TimelockControllerUpgradeable} from "openzeppelin-upgradeable/governance
 /// @title TimelockRolesUpgrader
 /// @notice A contract to upgrade the proposer and canceller roles of the Core and Treasury Governor contracts on the
 /// Core and Treasury Timelock
-/// Please report any security vulnerabilities here: https://immunefi.com/bug-bounty/arbitrum/information/
+/// @custom:security-contact https://immunefi.com/bug-bounty/arbitrum/information/
 contract TimelockRolesUpgrader {
   /// @notice The address of the Core Timelock contract where proposals are queued and executed.
   address public immutable CORE_TIMELOCK;
