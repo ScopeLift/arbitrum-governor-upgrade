@@ -19,6 +19,9 @@ import {OwnableUpgradeable} from "openzeppelin-upgradeable/access/OwnableUpgrade
 import {IVotes} from "openzeppelin/governance/utils/IVotes.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
+/// @title L2 Arbitrum Governor V2
+/// @notice Governance controls for the Arbitrum DAO
+/// @custom:security-contact https://immunefi.com/bug-bounty/arbitrum/information/
 contract L2ArbitrumGovernorV2 is
   Initializable,
   GovernorSettingsUpgradeable,
