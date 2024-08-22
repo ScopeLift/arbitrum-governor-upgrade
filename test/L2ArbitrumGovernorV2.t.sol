@@ -1149,7 +1149,7 @@ contract CoreGovernorHasVoted is CoreGovernorBase, CastVoteWithReasonAndParams {
   }
 }
 
-contract CoverGovernorQueue is CoreGovernorBase, Queue {
+contract CoreGovernorQueue is CoreGovernorBase, Queue {
   function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
     super.setUp();
   }

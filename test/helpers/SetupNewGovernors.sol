@@ -15,8 +15,6 @@ import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
 import {TimelockRolesUpgrader} from "src/gov-action-contracts/TimelockRolesUpgrader.sol";
 
 abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
-  uint256 constant FORK_BLOCK = 220_819_857; // Arbitrary recent block
-
   // Deploy & setup scripts
   SubmitUpgradeProposalScript submitUpgradeProposalScript;
   TimelockRolesUpgrader timelockRolesUpgrader;
@@ -49,8 +47,12 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
     proxyTreasuryGovernorDeployer.setUp();
 
     // Deploy Governor proxy contracts
-    newCoreGovernor = proxyCoreGovernorDeployer.run(_implementation);
-    newTreasuryGovernor = proxyTreasuryGovernorDeployer.run(_implementation);
+    newCoreGovernor = L2_CORE_GOVERNOR_ONCHAIN == address(0)
+      ? proxyCoreGovernorDeployer.run(_implementation)
+      : L2ArbitrumGovernorV2(payable(L2_CORE_GOVERNOR_ONCHAIN));
+    newTreasuryGovernor = L2_TREASURY_GOVERNOR_ONCHAIN == address(0)
+      ? proxyTreasuryGovernorDeployer.run(_implementation)
+      : L2ArbitrumGovernorV2(payable(L2_TREASURY_GOVERNOR_ONCHAIN));
 
     // Current governors and timelocks
     currentCoreGovernor = GovernorUpgradeable(payable(L2_CORE_GOVERNOR));
