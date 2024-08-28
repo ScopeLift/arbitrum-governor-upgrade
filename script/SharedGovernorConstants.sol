@@ -6,6 +6,7 @@ pragma solidity 0.8.26;
 // Inheritable extension holding governor deployment constants that are shared between the Core Governor and the
 // Treasury Governor. These should be carefully checked and reviewed before final deployment.
 contract SharedGovernorConstants {
+  uint256 constant FORK_BLOCK = 245_608_716; // Arbitrary recent block
   address public constant L2_ARB_TOKEN_ADDRESS = 0x912CE59144191C1204E64559FE8253a0e49E6548;
 
   address public constant L2_CORE_GOVERNOR = 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9;
@@ -23,8 +24,8 @@ contract SharedGovernorConstants {
   uint256 public constant L1_TIMELOCK_MIN_DELAY = 259_200; // TODO: Make sure this is up to date.
   address public constant L1_ARB_ONE_DELAYED_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
 
-  address public constant L2_CORE_GOVERNOR_ONCHAIN = address(0); // TODO: Update with the deployed address.
-  address public constant L2_TREASURY_GOVERNOR_ONCHAIN = address(0); // TODO: Update with the deployed address.
+  address public constant L2_CORE_GOVERNOR_ONCHAIN = 0x7796F378B3c56ceD57350B938561D8c52256456b;
+  address public constant L2_TREASURY_GOVERNOR_ONCHAIN = 0x4fd1216c8b5E72b22785169Ae5C1e8f3b30C19E4;
   bool public constant UPGRADE_PROPOSAL_PASSED_ONCHAIN = false; // TODO: Update after the upgrade proposal is passed.
 
   address public constant L2_UPGRADE_EXECUTOR = 0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827;
